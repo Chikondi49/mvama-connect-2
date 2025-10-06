@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "554586476755",
+    "project_id": "mvama-connect",
+    "storage_bucket": "mvama-connect.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:554586476755:android:f8304dfccce4e4ae0cc426",
+        "android_client_info": {
+          "package_name": "com.example.mvamaconnect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSnX8Lw6IpA52exNCPpR5RfrzHuRNvm2s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
