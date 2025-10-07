@@ -37,9 +37,22 @@ class EventService {
       
       const events: Event[] = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Handle Firestore Timestamp conversion for date fields
+        if (data.date && typeof data.date.toDate === 'function') {
+          data.date = data.date.toDate().toISOString();
+        }
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+          data.createdAt = data.createdAt.toDate().toISOString();
+        }
+        if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+          data.updatedAt = data.updatedAt.toDate().toISOString();
+        }
+        
         events.push({
           id: doc.id,
-          ...doc.data()
+          ...data
         } as Event);
       });
       
@@ -65,9 +78,22 @@ class EventService {
       
       const events: Event[] = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Handle Firestore Timestamp conversion for date fields
+        if (data.date && typeof data.date.toDate === 'function') {
+          data.date = data.date.toDate().toISOString();
+        }
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+          data.createdAt = data.createdAt.toDate().toISOString();
+        }
+        if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+          data.updatedAt = data.updatedAt.toDate().toISOString();
+        }
+        
         events.push({
           id: doc.id,
-          ...doc.data()
+          ...data
         } as Event);
       });
       
@@ -93,9 +119,22 @@ class EventService {
       
       const events: Event[] = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Handle Firestore Timestamp conversion for date fields
+        if (data.date && typeof data.date.toDate === 'function') {
+          data.date = data.date.toDate().toISOString();
+        }
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+          data.createdAt = data.createdAt.toDate().toISOString();
+        }
+        if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+          data.updatedAt = data.updatedAt.toDate().toISOString();
+        }
+        
         events.push({
           id: doc.id,
-          ...doc.data()
+          ...data
         } as Event);
       });
       
@@ -122,9 +161,22 @@ class EventService {
       
       const events: Event[] = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Handle Firestore Timestamp conversion for date fields
+        if (data.date && typeof data.date.toDate === 'function') {
+          data.date = data.date.toDate().toISOString();
+        }
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+          data.createdAt = data.createdAt.toDate().toISOString();
+        }
+        if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+          data.updatedAt = data.updatedAt.toDate().toISOString();
+        }
+        
         events.push({
           id: doc.id,
-          ...doc.data()
+          ...data
         } as Event);
       });
       
@@ -175,9 +227,22 @@ class EventService {
       
       const events: Event[] = [];
       querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Handle Firestore Timestamp conversion for date fields
+        if (data.date && typeof data.date.toDate === 'function') {
+          data.date = data.date.toDate().toISOString();
+        }
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+          data.createdAt = data.createdAt.toDate().toISOString();
+        }
+        if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+          data.updatedAt = data.updatedAt.toDate().toISOString();
+        }
+        
         events.push({
           id: doc.id,
-          ...doc.data()
+          ...data
         } as Event);
       });
       

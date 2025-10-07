@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { ArrowLeft, Copy, Phone, Smartphone } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { formatCurrency } from '../../utils/currencyFormatter';
 
 export default function AirtelMoneyScreen() {
   const [copiedField, setCopiedField] = useState<string>('');

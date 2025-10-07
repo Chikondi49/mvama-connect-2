@@ -20,7 +20,7 @@
   category: string;                 // "Sunday Service", "Morning Devotion", "Evening Devotion"
   
   // Optional Fields
-  thumbnailUrl?: string;            // "https://storage.googleapis.com/..."
+  thumbnailUrl?: string;            // "https://storage.googleapis.com/..." (Recommended: 800x450px, 16:9 aspect ratio)
   downloadUrl?: string;             // "https://storage.googleapis.com/..."
   viewCount?: number;               // 1234
   tags?: string[];                  // ["faith", "difficult times", "encouragement"]
@@ -40,7 +40,7 @@
   // Basic Information
   title: string;                    // "Sunday Service Messages"
   description: string;              // Series description
-  coverImage: string;               // "https://storage.googleapis.com/..."
+  coverImage: string;               // "https://storage.googleapis.com/..." (Recommended: 3000x3000px, 1:1 aspect ratio)
   speaker: string;                  // "Rev. Yassin Gammah"
   category: string;                 // "Sunday Service"
   
@@ -65,7 +65,7 @@
   "duration": "42:15",
   "publishedAt": "2024-11-10T10:00:00Z",
   "category": "Sunday Service",
-  "thumbnailUrl": "https://storage.googleapis.com/mvama-connect-images/thumbnails/faith-difficult-times.jpg",
+  "thumbnailUrl": "https://storage.googleapis.com/mvama-connect-images/thumbnails/faith-difficult-times.jpg", // 800x450px, 16:9 aspect ratio
   "downloadUrl": "https://storage.googleapis.com/mvama-connect-audio/sermons/faith-difficult-times.mp3",
   "viewCount": 1234,
   "tags": ["faith", "difficult times", "encouragement", "biblical principles"],
@@ -79,7 +79,7 @@
 {
   "title": "Sunday Service Messages",
   "description": "Weekly Sunday service messages from MVAMA CCAP Nkhoma Synod, delivering powerful biblical teachings and spiritual guidance.",
-  "coverImage": "https://storage.googleapis.com/mvama-connect-images/series/sunday-service-cover.jpg",
+  "coverImage": "https://storage.googleapis.com/mvama-connect-images/series/sunday-service-cover.jpg", // 3000x3000px, 1:1 aspect ratio
   "speaker": "Rev. Yassin Gammah",
   "category": "Sunday Service",
   "totalEpisodes": 4,

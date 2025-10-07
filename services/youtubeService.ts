@@ -255,24 +255,49 @@ class YouTubeService {
 
   // Format published date to readable format
   formatPublishedDate(isoDate: string): string {
-    const date = new Date(isoDate);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    try {
+      // Handle different date formats
+      let date: Date;
+      
+      if (!isoDate) {
+        return 'Date not available';
+      }
+      
+      // Try to parse the date
+      if (typeof isoDate === 'string') {
+        // Check if it's already a valid date string
+        date = new Date(isoDate);
+        
+        // Check if the date is valid
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date format:', isoDate);
+          return 'Date not available';
+        }
+      } else {
+        date = new Date(isoDate);
+      }
+      
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else if (diffDays < 30) {
-      const weeks = Math.floor(diffDays / 7);
-      return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      });
+      if (diffDays === 1) {
+        return 'Yesterday';
+      } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+      } else if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+      } else {
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+    } catch (error) {
+      console.error('Error formatting date:', error, 'Input:', isoDate);
+      return 'Date not available';
     }
   }
 

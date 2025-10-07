@@ -19,7 +19,7 @@
   category: string;                 // "Sunday Service", "Youth Event", "Prayer Meeting", "Special Event"
   
   // Visual
-  imageUrl?: string;                // "https://storage.googleapis.com/..."
+  imageUrl?: string;                // "https://storage.googleapis.com/..." (Recommended: 1200x675px, 16:9 aspect ratio)
   
   // Registration Details
   registrationRequired: boolean;    // true/false
@@ -51,7 +51,7 @@
   "time": "10:00 AM",
   "location": "MVAMA CCAP Nkhoma Synod Main Hall",
   "category": "Sunday Service",
-  "imageUrl": "https://storage.googleapis.com/mvama-connect-images/events/sunday-service-nov17.jpg",
+  "imageUrl": "https://storage.googleapis.com/mvama-connect-images/events/sunday-service-nov17.jpg", // 1200x675px, 16:9 aspect ratio
   "registrationRequired": false,
   "contactPerson": "Rev. Yassin Gammah",
   "contactPhone": "+265 123 456 789",
@@ -72,7 +72,7 @@
   "time": "6:00 PM",
   "location": "MVAMA CCAP Nkhoma Synod Youth Hall",
   "category": "Youth Event",
-  "imageUrl": "https://storage.googleapis.com/mvama-connect-images/events/youth-fellowship-nov20.jpg",
+  "imageUrl": "https://storage.googleapis.com/mvama-connect-images/events/youth-fellowship-nov20.jpg", // 1200x675px, 16:9 aspect ratio
   "registrationRequired": true,
   "registrationUrl": "https://forms.google.com/youth-fellowship-nov20",
   "maxAttendees": 50,

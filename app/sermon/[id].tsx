@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, Share2, Download, ExternalLink } from 'lucide-react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Download, ExternalLink, Share2 } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import YouTubePlayer from '../../components/YouTubePlayer';
 import { youtubeService, YouTubeVideo } from '../../services/youtubeService';
 
@@ -57,6 +57,32 @@ export default function SermonDetailScreen() {
         }},
       ]
     );
+  };
+
+  const handleDownload = async () => {
+    if (!sermon) return;
+    
+    try {
+      console.log('📥 Starting download for video sermon:', sermon.title);
+      
+      // For YouTube videos, we can't directly download the video file
+      // Instead, we'll show a message about using YouTube's download feature
+      Alert.alert(
+        'Download Not Available',
+        'Video sermons cannot be downloaded directly. You can use YouTube\'s download feature or save the video to your YouTube library.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open in YouTube', onPress: handleOpenInYouTube }
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Download error:', error);
+      Alert.alert(
+        'Download Error',
+        'Unable to download this video sermon.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   if (loading) {
@@ -115,7 +141,7 @@ export default function SermonDetailScreen() {
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleDownload}>
               <Download size={18} color="#c9a961" strokeWidth={2} />
               <Text style={styles.actionText}>Download</Text>
             </TouchableOpacity>

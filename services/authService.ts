@@ -214,13 +214,13 @@ export class AuthService {
         message = 'Password should be at least 6 characters long.';
         break;
       case 'auth/invalid-email':
-        message = 'Please enter a valid email address.';
+        message = 'Invalid email or password. Please check your credentials and try again.';
         break;
       case 'auth/user-not-found':
-        message = 'No account found with this email address.';
+        message = 'Invalid email or password. Please check your credentials and try again.';
         break;
       case 'auth/wrong-password':
-        message = 'Incorrect password. Please try again.';
+        message = 'Invalid email or password. Please check your credentials and try again.';
         break;
       case 'auth/too-many-requests':
         message = 'Too many failed attempts. Please try again later.';

@@ -11,7 +11,7 @@ export interface NewsArticle {
   category: string;
   excerpt: string;
   content: string;
-  imageUrl: string;
+  imageUrl: string; // Recommended: 800x450px, 16:9 aspect ratio
   date: string;
   time: string;
   readTime: string;
@@ -25,7 +25,7 @@ export interface CreateNewsArticle {
   category: string;
   excerpt: string;
   content: string;
-  imageUrl: string;
+  imageUrl: string; // Recommended: 800x450px, 16:9 aspect ratio
   readTime: string;
   featured?: boolean;
   author?: string;

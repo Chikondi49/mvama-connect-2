@@ -4,6 +4,7 @@ import { ArrowLeft, Banknote, Copy, Phone, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BankTransferDetails, givingService } from '../../services/givingService';
+import { formatCurrency } from '../../utils/currencyFormatter';
 
 export default function BankTransferScreen() {
   const [copiedField, setCopiedField] = useState<string>('');

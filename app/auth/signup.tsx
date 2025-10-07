@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, HelpCircle, Lock, Mail, Phone, User } from 'lucide-react-native';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -23,6 +23,7 @@ export default function SignUpScreen() {
   
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -30,9 +31,14 @@ export default function SignUpScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [displayNameError, setDisplayNameError] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [selectedSecurityQuestion, setSelectedSecurityQuestion] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [securityQuestionError, setSecurityQuestionError] = useState('');
+  const [securityAnswerError, setSecurityAnswerError] = useState('');
   const [notification, setNotification] = useState<{
     visible: boolean;
     message: string;
@@ -43,9 +49,23 @@ export default function SignUpScreen() {
     type: 'success',
   });
 
+  // Security questions options
+  const securityQuestions = [
+    "What was the name of your first pet?",
+    "What city were you born in?",
+    "What was your mother's maiden name?"
+  ];
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  };
+
+  const validatePhoneNumber = (phone: string) => {
+    // Remove all non-digit characters
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Check if it's a valid phone number (10-15 digits)
+    return cleanPhone.length >= 10 && cleanPhone.length <= 15;
   };
 
   const calculatePasswordStrength = (password: string) => {
@@ -63,8 +83,11 @@ export default function SignUpScreen() {
     let isValid = true;
     setDisplayNameError('');
     setEmailError('');
+    setPhoneError('');
     setPasswordError('');
     setConfirmPasswordError('');
+    setSecurityQuestionError('');
+    setSecurityAnswerError('');
 
     if (!displayName.trim()) {
       setDisplayNameError('Full name is required');
@@ -82,6 +105,14 @@ export default function SignUpScreen() {
       isValid = false;
     }
 
+    if (!phoneNumber.trim()) {
+      setPhoneError('Phone number is required');
+      isValid = false;
+    } else if (!validatePhoneNumber(phoneNumber)) {
+      setPhoneError('Please enter a valid phone number');
+      isValid = false;
+    }
+
     if (!password.trim()) {
       setPasswordError('Password is required');
       isValid = false;
@@ -95,6 +126,19 @@ export default function SignUpScreen() {
       isValid = false;
     } else if (password !== confirmPassword) {
       setConfirmPasswordError('Passwords do not match');
+      isValid = false;
+    }
+
+    if (!selectedSecurityQuestion) {
+      setSecurityQuestionError('Please select a security question');
+      isValid = false;
+    }
+
+    if (!securityAnswer.trim()) {
+      setSecurityAnswerError('Please provide an answer to the security question');
+      isValid = false;
+    } else if (securityAnswer.trim().length < 2) {
+      setSecurityAnswerError('Answer must be at least 2 characters');
       isValid = false;
     }
 
@@ -241,6 +285,29 @@ export default function SignUpScreen() {
                   {emailError && <Text style={styles.errorText}>{emailError}</Text>}
                 </View>
 
+                {/* Phone Number Input */}
+                <View style={styles.inputContainer}>
+                  <View style={[styles.inputWrapper, phoneError && styles.inputWrapperError]}>
+                    <Phone size={20} color={phoneError ? "#ff6b6b" : "#c9a961"} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Phone number"
+                      placeholderTextColor="#666666"
+                      value={phoneNumber}
+                      onChangeText={(text) => {
+                        setPhoneNumber(text);
+                        if (phoneError) setPhoneError('');
+                      }}
+                      keyboardType="phone-pad"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      underlineColorAndroid="transparent"
+                      selectionColor="#c9a961"
+                    />
+                  </View>
+                  {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
+                </View>
+
                 {/* Password Input */}
                 <View style={styles.inputContainer}>
                   <View style={[styles.inputWrapper, passwordError && styles.inputWrapperError]}>
@@ -320,6 +387,58 @@ export default function SignUpScreen() {
                     </TouchableOpacity>
                   </View>
                   {confirmPasswordError && <Text style={styles.errorText}>{confirmPasswordError}</Text>}
+                </View>
+
+                {/* Security Question Selection */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.sectionLabel}>Security Question</Text>
+                  <View style={[styles.inputWrapper, securityQuestionError && styles.inputWrapperError]}>
+                    <HelpCircle size={20} color={securityQuestionError ? "#ff6b6b" : "#c9a961"} style={styles.inputIcon} />
+                    <View style={styles.pickerContainer}>
+                      {securityQuestions.map((question, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={[
+                            styles.questionOption,
+                            selectedSecurityQuestion === question && styles.questionOptionSelected
+                          ]}
+                          onPress={() => {
+                            setSelectedSecurityQuestion(question);
+                            if (securityQuestionError) setSecurityQuestionError('');
+                          }}>
+                          <Text style={[
+                            styles.questionOptionText,
+                            selectedSecurityQuestion === question && styles.questionOptionTextSelected
+                          ]}>
+                            {question}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  {securityQuestionError && <Text style={styles.errorText}>{securityQuestionError}</Text>}
+                </View>
+
+                {/* Security Answer Input */}
+                <View style={styles.inputContainer}>
+                  <View style={[styles.inputWrapper, securityAnswerError && styles.inputWrapperError]}>
+                    <HelpCircle size={20} color={securityAnswerError ? "#ff6b6b" : "#c9a961"} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Your answer"
+                      placeholderTextColor="#666666"
+                      value={securityAnswer}
+                      onChangeText={(text) => {
+                        setSecurityAnswer(text);
+                        if (securityAnswerError) setSecurityAnswerError('');
+                      }}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      underlineColorAndroid="transparent"
+                      selectionColor="#c9a961"
+                    />
+                  </View>
+                  {securityAnswerError && <Text style={styles.errorText}>{securityAnswerError}</Text>}
                 </View>
 
                 {/* Sign Up Button */}
@@ -488,5 +607,38 @@ const styles = StyleSheet.create({
   passwordStrengthFill: {
     height: '100%',
     borderRadius: 2,
+  },
+  sectionLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#c9a961',
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  pickerContainer: {
+    flex: 1,
+  },
+  questionOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  questionOptionSelected: {
+    backgroundColor: 'rgba(201, 169, 97, 0.2)',
+    borderColor: '#c9a961',
+  },
+  questionOptionText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#cccccc',
+    textAlign: 'center',
+  },
+  questionOptionTextSelected: {
+    color: '#c9a961',
+    fontFamily: 'Inter-Medium',
   },
 });

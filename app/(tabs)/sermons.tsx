@@ -3,9 +3,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Clock, Download, Headphones, ListMusic, Pause, Play, Search, SkipBack, SkipForward, Users, Video } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { audioSermonService } from '../../services/audioSermonService';
+import { downloadService } from '../../services/downloadService';
 import { youtubeService, YouTubeVideo } from '../../services/youtubeService';
 
 const categories = ['All', 'Recent', 'Sunday Service', 'Morning Devotion', 'Evening Devotion'];
@@ -35,7 +36,7 @@ interface PodcastSeries {
   episodes: PodcastEpisode[];
 }
 
-// Mock Podcast Series Data
+// Sample Audio Data
 const mockPodcastSeries: PodcastSeries[] = [
   {
     id: 'series-1',
@@ -75,18 +76,18 @@ const mockPodcastSeries: PodcastSeries[] = [
         duration: '45:20',
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
         publishedAt: '2024-10-27T10:00:00Z',
-        description: 'An inspiring message about the transformative power of God\'s grace in our daily lives.',
+        description: 'Understanding the transforming power of God\'s grace in our daily lives.',
         episodeNumber: 3,
         downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
       },
       {
         id: 'episode-1-4',
-        title: 'Building Strong Christian Families',
+        title: 'Building Strong Foundations',
         speaker: 'Rev. Yassin Gammah',
-        duration: '40:15',
+        duration: '40:10',
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
         publishedAt: '2024-10-20T10:00:00Z',
-        description: 'Biblical principles for building and maintaining strong, Christ-centered families.',
+        description: 'Learning to build our lives on the solid foundation of Christ.',
         episodeNumber: 4,
         downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
       }
@@ -94,43 +95,43 @@ const mockPodcastSeries: PodcastSeries[] = [
   },
   {
     id: 'series-2',
-    title: 'Morning Devotions',
-    description: 'Daily morning devotions to start your day with God\'s word and spiritual encouragement.',
-    coverImage: 'https://images.pexels.com/photos/8828591/pexels-photo-8828591.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+    title: 'Morning Devotion',
+    description: 'Daily morning devotionals to start your day with God\'s word and prayer.',
+    coverImage: 'https://images.pexels.com/photos/8468012/pexels-photo-8468012.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
     speaker: 'Rev. Yassin Gammah',
     totalEpisodes: 3,
     category: 'Morning Devotion',
     episodes: [
       {
         id: 'episode-2-1',
-        title: 'Trusting God\'s Timing',
+        title: 'Starting the Day with God',
         speaker: 'Rev. Yassin Gammah',
-        duration: '25:30',
+        duration: '15:30',
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-        publishedAt: '2024-11-08T06:00:00Z',
-        description: 'Learning to trust in God\'s perfect timing for your life.',
+        publishedAt: '2024-11-09T06:00:00Z',
+        description: 'A short devotional to begin your day in God\'s presence.',
         episodeNumber: 1,
         downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3'
       },
       {
         id: 'episode-2-2',
-        title: 'The Joy of the Lord',
+        title: 'Prayer and Meditation',
         speaker: 'Rev. Yassin Gammah',
-        duration: '22:45',
+        duration: '18:45',
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
-        publishedAt: '2024-11-05T06:00:00Z',
-        description: 'Finding joy in the Lord as your strength for each day.',
+        publishedAt: '2024-11-08T06:00:00Z',
+        description: 'Learning the importance of prayer and meditation in our daily walk.',
         episodeNumber: 2,
         downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3'
       },
       {
         id: 'episode-2-3',
-        title: 'Walking in Victory',
+        title: 'God\'s Promises for Today',
         speaker: 'Rev. Yassin Gammah',
-        duration: '28:15',
+        duration: '16:20',
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3',
-        publishedAt: '2024-11-01T06:00:00Z',
-        description: 'Understanding your victory in Christ and living it out daily.',
+        publishedAt: '2024-11-07T06:00:00Z',
+        description: 'Claiming God\'s promises for strength and guidance throughout the day.',
         episodeNumber: 3,
         downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3'
       }
@@ -138,32 +139,32 @@ const mockPodcastSeries: PodcastSeries[] = [
   },
   {
     id: 'series-3',
-    title: 'Evening Reflections',
-    description: 'Peaceful evening reflections to end your day with God\'s peace and wisdom.',
-    coverImage: 'https://images.pexels.com/photos/8535230/pexels-photo-8535230.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+    title: 'Evening Devotion',
+    description: 'Peaceful evening devotionals to end your day with God\'s word and reflection.',
+    coverImage: 'https://images.pexels.com/photos/8468012/pexels-photo-8468012.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
     speaker: 'Rev. Yassin Gammah',
     totalEpisodes: 2,
     category: 'Evening Devotion',
     episodes: [
       {
         id: 'episode-3-1',
-        title: 'Finding Peace in Chaos',
+        title: 'Reflecting on God\'s Goodness',
         speaker: 'Rev. Yassin Gammah',
-        duration: '20:30',
+        duration: '20:15',
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-        publishedAt: '2024-11-07T18:00:00Z',
-        description: 'Finding God\'s peace in the midst of life\'s storms.',
+        publishedAt: '2024-11-09T18:00:00Z',
+        description: 'Taking time to reflect on God\'s goodness and faithfulness throughout the day.',
         episodeNumber: 1,
         downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3'
       },
       {
         id: 'episode-3-2',
-        title: 'Rest in His Presence',
+        title: 'Finding Peace in God',
         speaker: 'Rev. Yassin Gammah',
-        duration: '18:45',
+        duration: '22:30',
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3',
-        publishedAt: '2024-11-04T18:00:00Z',
-        description: 'Learning to rest in God\'s presence and find true peace.',
+        publishedAt: '2024-11-08T18:00:00Z',
+        description: 'Learning to find peace and rest in God\'s presence at the end of the day.',
         episodeNumber: 2,
         downloadUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3'
       }
@@ -191,6 +192,48 @@ export default function SermonsScreen() {
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
   const [showGlobalPlayer, setShowGlobalPlayer] = useState(false);
+  const [currentPlayingSeries, setCurrentPlayingSeries] = useState<string | null>(null);
+
+  // Helper function to format sermon dates safely
+  const formatSermonDate = (dateString: string): string => {
+    try {
+      if (!dateString) return 'Date not available';
+      
+      // Try YouTube service first
+      const formatted = youtubeService.formatPublishedDate(dateString);
+      if (formatted !== 'Date not available') {
+        return formatted;
+      }
+      
+      // Fallback: try to parse and format manually
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Date not available';
+      }
+      
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        return 'Yesterday';
+      } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+      } else if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+      } else {
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+    } catch (error) {
+      console.error('Error formatting sermon date:', error, 'Input:', dateString);
+      return 'Date not available';
+    }
+  };
 
   useEffect(() => {
     loadSermons();
@@ -202,6 +245,30 @@ export default function SermonsScreen() {
       }
     };
   }, []);
+
+  // Debug: Log podcastSeries changes
+  useEffect(() => {
+    console.log('📊 PodcastSeries state updated:', podcastSeries.length, 'series');
+    if (podcastSeries.length > 0) {
+      console.log('📋 Series titles:', podcastSeries.map(s => s.title));
+    }
+  }, [podcastSeries]);
+
+  // Handle global player visibility based on current view
+  useEffect(() => {
+    if (currentEpisode && currentPlayingSeries) {
+      // Show global player if user is not viewing the series containing the current episode
+      if (selectedSeries && selectedSeries.id !== currentPlayingSeries) {
+        setShowGlobalPlayer(true);
+      } else if (!selectedSeries) {
+        // Show global player when viewing series list
+        setShowGlobalPlayer(true);
+      } else {
+        // Hide global player when viewing the series containing the current episode
+        setShowGlobalPlayer(false);
+      }
+    }
+  }, [selectedSeries, currentEpisode, currentPlayingSeries]);
 
   const loadSermons = async () => {
     try {
@@ -220,47 +287,194 @@ export default function SermonsScreen() {
   const loadAudioSermons = async () => {
     try {
       setLoadingAudio(true);
-      console.log('🎵 Loading audio sermons from Firestore...');
+      console.log('🎵 Loading audio sermons...');
       
-      // Load audio series from Firestore
-      const series = await audioSermonService.getAllAudioSeries();
-      console.log(`✅ Loaded ${series.length} audio series from Firestore`);
+      // Try to load from Firestore first
+      console.log('🔍 Testing Firestore access...');
       
-      // Convert AudioSeries to PodcastSeries format
-      const podcastSeriesData: PodcastSeries[] = await Promise.all(
-        series.map(async (audioSeries) => {
-          // Get episodes for this series
-          const episodes = await audioSermonService.getEpisodesBySeries(audioSeries.id);
+      // Load all audio sermons (episodes) from the audioSermons collection
+      console.log('🎵 Loading all audio sermons from audioSermons collection...');
+      const allSermons = await audioSermonService.getAllAudioSermons();
+      console.log(`📊 Found ${allSermons.length} audio sermons in Firestore`);
+      
+      // Group sermons by seriesId to create series
+      const seriesMap = new Map<string, any>();
+      
+      allSermons.forEach(sermon => {
+        if (sermon.seriesId) {
+          if (!seriesMap.has(sermon.seriesId)) {
+            // Create series from first sermon with this seriesId
+            // Try to extract a better title from the seriesId
+            let seriesTitle = sermon.seriesId;
+            if (sermon.seriesId.includes('-')) {
+              // Convert "31-fundamental-questions" to "31 Fundamental Questions"
+              seriesTitle = sermon.seriesId
+                .split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            }
+            
+            seriesMap.set(sermon.seriesId, {
+              id: sermon.seriesId,
+              title: seriesTitle,
+              description: `Sermons from ${seriesTitle}`,
+              coverImage: sermon.thumbnailUrl || 'https://images.pexels.com/photos/8468012/pexels-photo-8468012.jpeg',
+              speaker: sermon.speaker,
+              totalEpisodes: 0,
+              category: sermon.category,
+              episodes: []
+            });
+          }
+          
+          // Add sermon to series
+          const series = seriesMap.get(sermon.seriesId);
+          series.episodes.push({
+            id: sermon.id,
+            title: sermon.title,
+            speaker: sermon.speaker,
+            duration: sermon.duration,
+            audioUrl: sermon.audioUrl,
+            publishedAt: sermon.publishedAt,
+            description: sermon.description,
+            episodeNumber: sermon.episodeNumber || 1,
+            downloadUrl: sermon.downloadUrl,
+          });
+          series.totalEpisodes = series.episodes.length;
+        }
+      });
+      
+      const series = Array.from(seriesMap.values());
+      console.log(`📊 Created ${series.length} series from sermons`);
+      
+      // Debug: Show sermons without seriesId
+      const orphanedSermons = allSermons.filter(sermon => !sermon.seriesId);
+      if (orphanedSermons.length > 0) {
+        console.log(`⚠️ Found ${orphanedSermons.length} sermons without seriesId:`, orphanedSermons.map(s => ({
+          id: s.id,
+          title: s.title,
+          seriesId: s.seriesId
+        })));
+      }
+      
+      // Debug: Log all series found
+      if (series.length > 0) {
+        console.log('📋 All series found:');
+        series.forEach((s, index) => {
+          console.log(`  ${index + 1}. "${s.title}" (ID: ${s.id}, Episodes: ${s.episodes.length})`);
+        });
+      }
+      
+      // Debug: Show comprehensive data analysis
+      console.log('🔍 Running comprehensive data analysis...');
+      await audioSermonService.debugEpisodesAndSeries();
+      
+      // Additional debugging for the specific series
+      console.log('🔍 Checking specific series: "31-fundamental-questions"');
+      try {
+        const specificEpisodes = await audioSermonService.getEpisodesBySeries('31-fundamental-questions');
+        console.log(`📺 Episodes found for "31-fundamental-questions": ${specificEpisodes.length}`);
+        if (specificEpisodes.length > 0) {
+          console.log('📋 Episode details:', specificEpisodes.map(e => ({
+            id: e.id,
+            title: e.title,
+            seriesId: e.seriesId,
+            episodeNumber: e.episodeNumber
+          })));
+        }
+      } catch (error) {
+        console.error('❌ Error fetching episodes for specific series:', error);
+      }
+      
+      if (series.length > 0) {
+        console.log('✅ Using Firestore data from audioSermons collection');
+        
+        // Convert the series created from sermons to PodcastSeries format
+        const podcastSeriesData: PodcastSeries[] = series.map(seriesData => {
+          console.log(`🔍 Processing series: "${seriesData.title}" (ID: ${seriesData.id})`);
+          console.log(`📺 Found ${seriesData.episodes.length} episodes for series "${seriesData.title}"`);
+          
+          // Log episode details for debugging
+          if (seriesData.episodes.length > 0) {
+            console.log(`📋 Episodes for "${seriesData.title}":`, seriesData.episodes.map((e: any) => ({
+              id: e.id,
+              title: e.title,
+              episodeNumber: e.episodeNumber
+            })));
+          } else {
+            console.log(`⚠️ No episodes found for series "${seriesData.title}"`);
+          }
           
           return {
-            id: audioSeries.id,
-            title: audioSeries.title,
-            description: audioSeries.description,
-            coverImage: audioSeries.coverImage,
-            speaker: audioSeries.speaker,
-            totalEpisodes: audioSeries.totalEpisodes,
-            category: audioSeries.category,
-            episodes: episodes.map(episode => ({
-              id: episode.id,
-              title: episode.title,
-              speaker: episode.speaker,
-              duration: episode.duration,
-              audioUrl: episode.audioUrl,
-              publishedAt: episode.publishedAt,
-              description: episode.description,
-              episodeNumber: episode.episodeNumber || 1,
-              downloadUrl: episode.downloadUrl,
-            }))
+            id: seriesData.id,
+            title: seriesData.title,
+            description: seriesData.description,
+            coverImage: seriesData.coverImage,
+            speaker: seriesData.speaker,
+            totalEpisodes: seriesData.totalEpisodes,
+            category: seriesData.category,
+            episodes: seriesData.episodes
           };
-        })
-      );
-      
-      setPodcastSeries(podcastSeriesData);
-      console.log(`✅ Converted ${podcastSeriesData.length} series to podcast format`);
+        });
+        
+        setPodcastSeries(podcastSeriesData);
+        console.log(`✅ Converted ${podcastSeriesData.length} series to podcast format`);
+        
+        // Debug: Log the final podcast series data
+        console.log('📊 Final podcast series data:');
+        podcastSeriesData.forEach((series, index) => {
+          console.log(`  Series ${index + 1}: "${series.title}" (${series.episodes.length} episodes)`);
+          series.episodes.forEach((episode, epIndex) => {
+            console.log(`    Episode ${epIndex + 1}: "${episode.title}" (Episode #${episode.episodeNumber})`);
+          });
+        });
+      } else {
+        console.log('📝 No Firestore data found');
+        console.log('💡 You can create sample data in Firestore or use local sample data');
+        
+        // Option 1: Use local sample data (current behavior)
+        console.log('📊 Using local sample data');
+        setPodcastSeries(mockPodcastSeries);
+        
+        // Option 2: Create sample data in Firestore (uncomment to enable)
+        // console.log('📝 Creating sample data in Firestore...');
+        // await audioSermonService.createSampleData();
+        // console.log('✅ Sample data created in Firestore');
+        // // Reload data after creating sample data
+        // const newSeries = await audioSermonService.getAllAudioSeries();
+        // if (newSeries.length > 0) {
+        //   // Process the newly created data
+        //   const podcastSeriesData: PodcastSeries[] = await Promise.all(
+        //     newSeries.map(async (audioSeries) => {
+        //       const episodes = await audioSermonService.getEpisodesBySeries(audioSeries.id);
+        //       return {
+        //         id: audioSeries.id,
+        //         title: audioSeries.title,
+        //         description: audioSeries.description,
+        //         coverImage: audioSeries.coverImage,
+        //         speaker: audioSeries.speaker,
+        //         totalEpisodes: audioSeries.totalEpisodes,
+        //         category: audioSeries.category,
+        //         episodes: episodes.map(episode => ({
+        //           id: episode.id,
+        //           title: episode.title,
+        //           speaker: episode.speaker,
+        //           duration: episode.duration,
+        //           audioUrl: episode.audioUrl,
+        //           publishedAt: episode.publishedAt,
+        //           description: episode.description,
+        //           episodeNumber: episode.episodeNumber || 1,
+        //           downloadUrl: episode.downloadUrl,
+        //         }))
+        //       };
+        //     })
+        //   );
+        //   setPodcastSeries(podcastSeriesData);
+        // }
+      }
       
     } catch (error) {
       console.error('❌ Error loading audio sermons:', error);
-      // Fallback to mock data if Firestore fails
+      console.log('📝 Falling back to sample data due to error');
       setPodcastSeries(mockPodcastSeries);
     } finally {
       setLoadingAudio(false);
@@ -284,60 +498,139 @@ export default function SermonsScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Helper function to parse duration string to seconds
+  const parseDurationToSeconds = (durationStr: string): number => {
+    if (!durationStr) return 0;
+    
+    // Handle different duration formats: "42:15", "1:23:45", "42.15"
+    const parts = durationStr.split(':');
+    if (parts.length === 2) {
+      // MM:SS format
+      const minutes = parseInt(parts[0], 10);
+      const seconds = parseInt(parts[1], 10);
+      return minutes * 60 + seconds;
+    } else if (parts.length === 3) {
+      // HH:MM:SS format
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      const seconds = parseInt(parts[2], 10);
+      return hours * 3600 + minutes * 60 + seconds;
+    } else {
+      // Try to parse as decimal seconds
+      return parseFloat(durationStr) || 0;
+    }
+  };
+
   // Audio Player Functions
   const playAudio = async (episode: PodcastEpisode) => {
     try {
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      if (playingAudio === episode.id) {
-        // Pause if currently playing
-        await sound?.pauseAsync();
-        setPlayingAudio(null);
-        setIsPlaying(false);
+      console.log('🎵 Play audio requested for:', episode.title);
+      
+      // If the same episode is already playing, toggle pause/play
+      if (playingAudio === episode.id && sound) {
+        if (isPlaying) {
+          console.log('⏸️ Pausing audio');
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          console.log('▶️ Resuming audio');
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
         return;
       }
 
+      // If a different episode is playing, stop it first
+      if (sound) {
+        console.log('🛑 Stopping previous audio');
+        await sound.unloadAsync();
+      }
+
+      console.log('🎵 Loading new audio:', episode.audioUrl);
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: episode.audioUrl },
-        { shouldPlay: true }
+        { 
+          shouldPlay: true,
+          progressUpdateIntervalMillis: 1000 // Update every second for better responsiveness
+        }
       );
       
       setSound(newSound);
       setPlayingAudio(episode.id);
       setCurrentEpisode(episode);
       setIsPlaying(true);
+      setCurrentPlayingSeries(selectedSeries?.id || null);
       setShowGlobalPlayer(true);
       setIsPlayerMinimized(false);
 
-      // Generate waveform data
-      const episodeDuration = parseFloat(episode.duration.replace(':', '.')) * 60; // Convert MM:SS to seconds
+      // Parse duration correctly
+      const episodeDuration = parseDurationToSeconds(episode.duration);
+      console.log(`⏱️ Episode duration: ${episode.duration} -> ${episodeDuration} seconds`);
       setDuration(episodeDuration);
       setWaveformData(generateWaveformData(episodeDuration));
 
       newSound.setOnPlaybackStatusUpdate((status) => {
-        setPlaybackStatus(status);
         if (status.isLoaded) {
+          setPlaybackStatus(status);
           setCurrentTime(status.positionMillis / 1000);
           setIsPlaying(status.isPlaying);
           
           if (status.didJustFinish) {
+            console.log('✅ Audio finished playing');
             setPlayingAudio(null);
             setCurrentEpisode(null);
             setIsPlaying(false);
             setCurrentTime(0);
+            setShowGlobalPlayer(false);
           }
         }
       });
+      
+      console.log('✅ Audio loaded and playing');
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error('❌ Error playing audio:', error);
+      setPlayingAudio(null);
+      setCurrentEpisode(null);
+      setIsPlaying(false);
     }
   };
 
   const seekTo = async (position: number) => {
     if (sound && playbackStatus?.isLoaded) {
-      await sound.setPositionAsync(position * 1000); // Convert to milliseconds
+      // Ensure position is a valid number and within bounds
+      const validPosition = Math.max(0, Math.min(position, duration));
+      if (isFinite(validPosition) && validPosition >= 0) {
+        try {
+          await sound.setPositionAsync(validPosition * 1000); // Convert to milliseconds
+          setCurrentTime(validPosition);
+        } catch (error) {
+          console.error('❌ Error seeking to position:', error);
+        }
+      }
+    }
+  };
+
+  // Global player controls
+  const togglePlayPause = async () => {
+    if (!currentEpisode) return;
+    
+    try {
+      if (isPlaying) {
+        console.log('⏸️ Global pause');
+        await sound?.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        console.log('▶️ Global play/resume');
+        if (sound) {
+          await sound.playAsync();
+          setIsPlaying(true);
+        } else {
+          // If no sound object, start playing the current episode
+          await playAudio(currentEpisode);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error toggling play/pause:', error);
     }
   };
 
@@ -356,17 +649,119 @@ export default function SermonsScreen() {
   };
 
   const downloadAudio = async (episode: PodcastEpisode) => {
-    // This would implement actual download functionality
-    console.log('Downloading audio:', episode.title);
-    // In a real app, you'd use expo-file-system to download the file
+    try {
+      console.log('📥 Starting download for:', episode.title);
+      
+      // Generate filename
+      const filename = downloadService.generateFilename(episode.title, episode.audioUrl);
+      
+      // Check if file already exists
+      const fileExists = await downloadService.fileExists(filename);
+      if (fileExists) {
+        Alert.alert(
+          'File Already Downloaded',
+          'This sermon has already been downloaded to your device.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Show download progress
+      Alert.alert(
+        'Download Started',
+        `Downloading "${episode.title}"...`,
+        [{ text: 'OK' }]
+      );
+
+      // Download the file
+      const result = await downloadService.downloadFile(
+        episode.audioUrl,
+        filename,
+        (progress) => {
+          const percentage = downloadService.getProgressPercentage(progress);
+          console.log(`📊 Download progress: ${percentage}%`);
+        }
+      );
+
+      if (result.success && result.fileUri) {
+        // Save to media library
+        const saved = await downloadService.saveToMediaLibrary(result.fileUri, filename);
+        
+        if (saved) {
+          Alert.alert(
+            'Download Complete',
+            `"${episode.title}" has been saved to your device's media library.`,
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Download Complete',
+            `"${episode.title}" has been downloaded but couldn't be saved to media library.`,
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        Alert.alert(
+          'Download Failed',
+          result.error || 'Failed to download the sermon. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Download error:', error);
+      Alert.alert(
+        'Download Error',
+        'Failed to download the sermon. Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleVideoDownload = async (sermon: YouTubeVideo) => {
+    try {
+      console.log('📥 Starting download for video sermon:', sermon.title);
+      
+      // For YouTube videos, we can't directly download the video file
+      // Instead, we'll show a message about using YouTube's download feature
+      Alert.alert(
+        'Download Not Available',
+        'Video sermons cannot be downloaded directly. You can use YouTube\'s download feature or save the video to your YouTube library.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open in YouTube', onPress: () => {
+            const watchUrl = youtubeService.getWatchUrl(sermon.id);
+            console.log('Opening in YouTube:', watchUrl);
+            // In a real app, you would use Linking.openURL(watchUrl)
+          }}
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Download error:', error);
+      Alert.alert(
+        'Download Error',
+        'Unable to download this video sermon.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const openSeries = (series: PodcastSeries) => {
     setSelectedSeries(series);
+    // Hide global player if user is viewing the series that contains the currently playing episode
+    if (currentPlayingSeries === series.id && currentEpisode) {
+      setShowGlobalPlayer(false);
+    } else if (currentEpisode) {
+      // Show global player if user is viewing a different series while audio is playing
+      setShowGlobalPlayer(true);
+    }
   };
 
   const goBackToSeries = () => {
     setSelectedSeries(null);
+    // Show global player when going back to series list if audio is playing
+    if (currentEpisode) {
+      setShowGlobalPlayer(true);
+    }
   };
 
   const minimizePlayer = () => {
@@ -388,6 +783,7 @@ export default function SermonsScreen() {
     setShowGlobalPlayer(false);
     setIsPlayerMinimized(false);
     setCurrentTime(0);
+    setCurrentPlayingSeries(null);
   };
 
   // Global Minimizable Player Component
@@ -412,8 +808,12 @@ export default function SermonsScreen() {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={styles.globalPlayButton} 
-              onPress={() => currentEpisode && playAudio(currentEpisode)}>
+              style={[
+                styles.globalPlayButton,
+                isPlaying && styles.globalPlayButtonActive
+              ]} 
+              onPress={togglePlayPause}
+              activeOpacity={0.8}>
               {isPlaying ? (
                 <Pause size={20} color="#ffffff" fill="#ffffff" />
               ) : (
@@ -472,8 +872,24 @@ export default function SermonsScreen() {
     
     const handlePress = (event: any) => {
       const { locationX } = event.nativeEvent;
-      const position = (locationX / width) * duration;
-      onSeek(position);
+      
+      // Ensure locationX is a valid number
+      if (typeof locationX !== 'number' || !isFinite(locationX)) {
+        console.warn('Invalid locationX:', locationX);
+        return;
+      }
+      
+      // Calculate position safely
+      const clickRatio = Math.max(0, Math.min(1, locationX / width));
+      const position = clickRatio * duration;
+      
+      // Ensure position is valid
+      if (isFinite(position) && position >= 0 && position <= duration) {
+        console.log(`🎯 Seeking to: ${position.toFixed(2)}s (${(clickRatio * 100).toFixed(1)}%)`);
+        onSeek(position);
+      } else {
+        console.warn('Invalid seek position:', position);
+      }
     };
 
     return (
@@ -537,8 +953,38 @@ export default function SermonsScreen() {
       matchesCategory = series.category === selectedCategory;
     }
     
+    console.log(`🔍 Filtering series "${series.title}":`, {
+      matchesSearch,
+      matchesCategory,
+      selectedCategory,
+      seriesCategory: series.category,
+      finalMatch: matchesSearch && matchesCategory
+    });
+    
     return matchesSearch && matchesCategory;
   });
+
+  // Debug: Log filtering results
+  console.log(`📊 Filtering results: ${filteredPodcastSeries.length} of ${podcastSeries.length} series match filters`);
+  console.log(`🔍 Selected category: "${selectedCategory}", Search query: "${searchQuery}"`);
+  
+  // Debug: Check if "31-fundamental-questions" series is being filtered
+  const fundamentalSeries = podcastSeries.find(s => s.title.includes('31') || s.title.includes('FUNDAMENTAL'));
+  if (fundamentalSeries) {
+    console.log(`🔍 Found "31 Fundamental Questions" series:`, {
+      title: fundamentalSeries.title,
+      category: fundamentalSeries.category,
+      episodes: fundamentalSeries.episodes.length,
+      isFiltered: filteredPodcastSeries.includes(fundamentalSeries)
+    });
+  } else {
+    console.log('⚠️ "31 Fundamental Questions" series not found in podcastSeries');
+  }
+  
+  // TEMPORARY: Force show all series for debugging
+  console.log('🧪 TEMPORARY: Forcing all series to show for debugging');
+  const forcedFilteredPodcastSeries = [...podcastSeries];
+  console.log(`🧪 Forced filtered series count: ${forcedFilteredPodcastSeries.length}`);
 
   // Filter episodes within a series
   const filteredEpisodes = selectedSeries ? selectedSeries.episodes.filter(episode => {
@@ -691,6 +1137,7 @@ export default function SermonsScreen() {
           {activeTab === 'audio' ? (
             // Audio Sermons Section
             <>
+              {console.log('🎵 Rendering audio tab, podcastSeries:', podcastSeries.length, 'loadingAudio:', loadingAudio, 'filteredPodcastSeries:', filteredPodcastSeries.length)}
               {selectedSeries ? (
                 // Episode List View
                 <>
@@ -744,9 +1191,13 @@ export default function SermonsScreen() {
                             </View>
                           </View>
                             <TouchableOpacity 
-                              style={styles.episodePlayButton}
-                              onPress={() => playAudio(episode)}>
-                              {playingAudio === episode.id ? (
+                              style={[
+                                styles.episodePlayButton,
+                                playingAudio === episode.id && isPlaying && styles.episodePlayButtonActive
+                              ]}
+                              onPress={() => playAudio(episode)}
+                              activeOpacity={0.7}>
+                              {playingAudio === episode.id && isPlaying ? (
                                 <Pause size={20} color="#c9a961" fill="#c9a961" />
                               ) : (
                                 <Play size={20} color="#c9a961" fill="#c9a961" />
@@ -786,7 +1237,7 @@ export default function SermonsScreen() {
                     </Text>
                   </View>
                   
-                  {filteredPodcastSeries.length === 0 ? (
+                  {(forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).length === 0 ? (
             <View style={styles.emptyContainer}>
                       <Text style={styles.emptyText}>No podcast series found</Text>
               <Text style={styles.emptySubtext}>
@@ -794,7 +1245,7 @@ export default function SermonsScreen() {
               </Text>
             </View>
           ) : (
-                    filteredPodcastSeries.map((series) => (
+                    (forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).map((series) => (
                       <TouchableOpacity 
                         key={series.id} 
                         style={styles.podcastSeriesCard}
@@ -881,11 +1332,13 @@ export default function SermonsScreen() {
                     </View>
                     <Text style={styles.metaDivider}>•</Text>
                     <Text style={styles.metaText}>
-                      {youtubeService.formatPublishedDate(sermon.publishedAt)}
+                      {formatSermonDate(sermon.publishedAt)}
                     </Text>
                     <Text style={styles.metaDivider}>•</Text>
                     <Text style={styles.metaText}>{sermon.viewCount} views</Text>
-                    <TouchableOpacity style={styles.downloadButton}>
+                    <TouchableOpacity 
+                      style={styles.downloadButton}
+                      onPress={() => handleVideoDownload(sermon)}>
                       <Download size={16} color="#c9a961" strokeWidth={2} />
                     </TouchableOpacity>
                   </View>
@@ -993,15 +1446,23 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   categoryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 30,
     backgroundColor: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#2a2a2a',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 40,
+    minHeight: 44,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   categoryButtonActive: {
     backgroundColor: '#c9a961',
@@ -1009,17 +1470,19 @@ const styles = StyleSheet.create({
     shadowColor: '#c9a961',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+    transform: [{ scale: 1.02 }],
   },
   categoryText: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 13,
+    fontSize: 14,
     color: '#999999',
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   categoryTextActive: {
     color: '#ffffff',
@@ -1027,47 +1490,49 @@ const styles = StyleSheet.create({
   },
   sermonsContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 100, // Extra space for global player
   },
   sectionHeader: {
-    marginBottom: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 2,
     borderBottomColor: '#2a2a2a',
   },
   sectionTitle: {
     fontFamily: 'Inter-Bold',
-    fontSize: 20,
+    fontSize: 22,
     color: '#ffffff',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: 0.5,
   },
   sectionSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#666666',
+    fontFamily: 'Inter-Medium',
+    fontSize: 15,
+    color: '#999999',
+    letterSpacing: 0.3,
   },
   // Podcast Series Styles
   podcastSeriesCard: {
     backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    marginBottom: 20,
+    borderRadius: 20,
+    marginBottom: 24,
+    marginHorizontal: 4,
     borderWidth: 1,
     borderColor: '#2a2a2a',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 6,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    overflow: 'hidden',
   },
   podcastSeriesCover: {
     width: '100%',
-    height: 200,
-    borderWidth: 1,
-    borderColor: '#ffffff',
+    height: 220,
   },
   podcastSeriesCoverStyle: {
     resizeMode: 'cover',
@@ -1086,7 +1551,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   podcastSeriesInfo: {
-    padding: 20,
+    padding: 24,
+    paddingTop: 20,
   },
   podcastSeriesCategory: {
     fontFamily: 'Inter-SemiBold',
@@ -1202,18 +1668,27 @@ const styles = StyleSheet.create({
   },
   episodeCard: {
     backgroundColor: '#1a1a1a',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    marginBottom: 8,
   },
   episodeCardIndented: {
-    marginLeft: 16,
-    marginRight: 16,
+    marginLeft: 20,
+    marginRight: 20,
   },
   episodeContent: {
     flexDirection: 'row',
-    padding: 16,
-    paddingLeft: 56, // Space for the banner
+    padding: 20,
+    paddingLeft: 60, // Space for the banner
     alignItems: 'center',
   },
   episodeBanner: {
@@ -1221,20 +1696,28 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 40,
+    width: 48,
     backgroundColor: '#c9a961',
     alignItems: 'center',
     justifyContent: 'center',
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+    shadowColor: '#c9a961',
+    shadowOffset: {
+      width: 2,
+      height: 0,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   episodeBannerText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 10,
+    fontSize: 11,
     color: '#000000',
     transform: [{ rotate: '270deg' }],
     textAlign: 'center',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   episodeNumber: {
     width: 32,
@@ -1255,17 +1738,17 @@ const styles = StyleSheet.create({
   },
   episodeTitle: {
     fontFamily: 'Inter-Bold',
-    fontSize: 15,
+    fontSize: 16,
     color: '#ffffff',
-    marginBottom: 4,
-    lineHeight: 20,
+    marginBottom: 6,
+    lineHeight: 22,
   },
   episodeDescription: {
     fontFamily: 'Inter-Regular',
-    fontSize: 12,
+    fontSize: 13,
     color: '#999999',
-    marginBottom: 8,
-    lineHeight: 16,
+    marginBottom: 10,
+    lineHeight: 18,
   },
   episodeMeta: {
     flexDirection: 'row',
@@ -1273,13 +1756,28 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   episodePlayButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(201, 169, 97, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
+    marginLeft: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 97, 0.2)',
+  },
+  episodePlayButtonActive: {
+    backgroundColor: 'rgba(201, 169, 97, 0.25)',
+    borderColor: 'rgba(201, 169, 97, 0.4)',
+    transform: [{ scale: 1.08 }],
+    shadowColor: '#c9a961',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   
   // Audio Progress Indicator Styles
@@ -1446,6 +1944,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  globalPlayButtonActive: {
+    backgroundColor: '#b89a4a',
+    transform: [{ scale: 1.05 }],
+  },
   globalPlayerActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1581,19 +2083,28 @@ const styles = StyleSheet.create({
   emptyContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
   },
   emptyText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   emptySubtext: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#666666',
+    fontFamily: 'Inter-Medium',
+    fontSize: 15,
+    color: '#999999',
     textAlign: 'center',
+    lineHeight: 22,
+    letterSpacing: 0.3,
   },
 });

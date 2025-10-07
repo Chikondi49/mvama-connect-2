@@ -4,6 +4,7 @@ import { ArrowLeft, Banknote, CheckCircle, Heart, Smartphone } from 'lucide-reac
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { GivingOption, givingService, PaymentMethod } from '../services/givingService';
+import { formatCurrency } from '../utils/currencyFormatter';
 
 export default function GiveScreen() {
   const [selectedAmount, setSelectedAmount] = useState<string>('');
@@ -19,7 +20,9 @@ export default function GiveScreen() {
   };
 
   const handleCustomAmount = (amount: string) => {
-    setCustomAmount(amount);
+    // Remove any non-numeric characters except decimal point
+    const cleanAmount = amount.replace(/[^\d.]/g, '');
+    setCustomAmount(cleanAmount);
     setSelectedAmount('');
   };
 
@@ -45,17 +48,18 @@ export default function GiveScreen() {
       console.error('❌ Error loading giving data:', error);
       // Fallback to default data if Firebase fails
       setGivingOptions([
-        { id: '1', amount: '2,000', isPopular: false, isBigButton: false, order: 1 },
-        { id: '2', amount: '5,000', isPopular: false, isBigButton: false, order: 2 },
-        { id: '3', amount: '10,000', isPopular: false, isBigButton: false, order: 3 },
-        { id: '4', amount: '20,000', isPopular: true, isBigButton: true, order: 4 },
-        { id: '5', amount: '50,000', isPopular: false, isBigButton: false, order: 5 },
+        { id: '1', amount: '2000', isPopular: false, isBigButton: false, order: 1 },
+        { id: '2', amount: '5000', isPopular: false, isBigButton: false, order: 2 },
+        { id: '3', amount: '10000', isPopular: false, isBigButton: false, order: 3 },
+        { id: '4', amount: '20000', isPopular: true, isBigButton: true, order: 4 },
+        { id: '5', amount: '50000', isPopular: false, isBigButton: false, order: 5 },
       ]);
-      setPaymentMethods([
+      const fallbackMethods = [
         { id: '1', name: 'Bank Transfer', type: 'bank', icon: 'Banknote', isActive: true, order: 1 },
         { id: '2', name: 'Airtel Money 2', type: 'airtel', icon: 'Smartphone', isActive: true, order: 2 },
         { id: '3', name: 'TNM Mpamba', type: 'tnm', icon: 'Smartphone', isActive: true, order: 3 },
-      ]);
+      ];
+      setPaymentMethods(fallbackMethods);
     } finally {
       setLoading(false);
     }
@@ -64,6 +68,7 @@ export default function GiveScreen() {
   useEffect(() => {
     loadGivingData();
   }, []);
+
 
   const handleGive = () => {
     const amount = selectedAmount || customAmount;
@@ -134,7 +139,7 @@ export default function GiveScreen() {
                   option.isBigButton && styles.bigAmountText,
                   selectedAmount === option.amount && styles.selectedAmountText
                 ]}>
-                  MK{option.amount}
+                  {formatCurrency(option.amount)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -146,13 +151,18 @@ export default function GiveScreen() {
               <Text style={styles.dollarSign}>MK</Text>
               <TextInput
                 style={styles.customAmountField}
-                placeholder="0"
+                placeholder="0.00"
                 placeholderTextColor="#666666"
                 value={customAmount}
                 onChangeText={handleCustomAmount}
                 keyboardType="numeric"
               />
             </View>
+            {customAmount && (
+              <Text style={styles.formattedAmount}>
+                {formatCurrency(customAmount)}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -160,7 +170,7 @@ export default function GiveScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Method</Text>
           
-          {paymentMethods.map((method) => (
+          {paymentMethods.length > 0 ? paymentMethods.map((method) => (
             <TouchableOpacity
               key={method.id}
               style={[
@@ -181,7 +191,11 @@ export default function GiveScreen() {
               </Text>
               {selectedMethod === method.type && <CheckCircle size={20} color="#c9a961" />}
             </TouchableOpacity>
-          ))}
+          )) : (
+            <View style={styles.noPaymentMethods}>
+              <Text style={styles.noPaymentMethodsText}>Loading payment methods...</Text>
+            </View>
+          )}
         </View>
 
         {/* Give Button */}
@@ -408,5 +422,21 @@ const styles = StyleSheet.create({
     color: '#c9a961',
     fontFamily: 'Inter-Medium',
     marginTop: 12,
+  },
+  formattedAmount: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: '#c9a961',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  noPaymentMethods: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noPaymentMethodsText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#666666',
   },
 });

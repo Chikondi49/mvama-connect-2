@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Bell, ChevronRight, Download, Globe, Heart, Circle as HelpCircle, LogOut, Moon, Share2, Shield, User } from 'lucide-react-native';
+import { Bell, ChevronRight, Download, Globe, Heart, Circle as HelpCircle, Info, LogOut, Moon, Share2, Shield, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -137,7 +137,9 @@ export default function SettingsScreen() {
             <ChevronRight size={20} color="#666666" strokeWidth={2} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingCard}>
+          <TouchableOpacity 
+            style={styles.settingCard}
+            onPress={() => router.push('/settings/support')}>
             <View style={styles.settingIcon}>
               <HelpCircle size={20} color="#c9a961" strokeWidth={2} />
             </View>
@@ -158,29 +160,33 @@ export default function SettingsScreen() {
             </View>
             <ChevronRight size={20} color="#666666" strokeWidth={2} />
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.settingCard}
+            onPress={() => router.push('/settings/about')}>
+            <View style={styles.settingIcon}>
+              <Info size={20} color="#c9a961" strokeWidth={2} />
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingTitle}>About</Text>
+              <Text style={styles.settingDescription}>App information & developer</Text>
+            </View>
+            <ChevronRight size={20} color="#666666" strokeWidth={2} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal</Text>
 
-          <TouchableOpacity style={styles.settingCard}>
+          <TouchableOpacity 
+            style={styles.settingCard}
+            onPress={() => router.push('/settings/legal')}>
             <View style={styles.settingIcon}>
               <Shield size={20} color="#c9a961" strokeWidth={2} />
             </View>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Privacy Policy</Text>
-              <Text style={styles.settingDescription}>How we protect your data</Text>
-            </View>
-            <ChevronRight size={20} color="#666666" strokeWidth={2} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingCard}>
-            <View style={styles.settingIcon}>
-              <Shield size={20} color="#c9a961" strokeWidth={2} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Terms of Service</Text>
-              <Text style={styles.settingDescription}>App usage terms</Text>
+              <Text style={styles.settingTitle}>Legal & Policies</Text>
+              <Text style={styles.settingDescription}>Privacy, terms, and legal info</Text>
             </View>
             <ChevronRight size={20} color="#666666" strokeWidth={2} />
           </TouchableOpacity>
@@ -188,17 +194,33 @@ export default function SettingsScreen() {
 
         <TouchableOpacity 
           style={styles.logoutButton} 
-          onPress={async () => {
-            try {
-              console.log('🔐 LOGOUT BUTTON PRESSED');
-              await signOut();
-              console.log('✅ SignOut completed');
-              console.log('🔄 Redirecting to login...');
-              router.replace('/auth/login');
-        } catch (error: any) {
-          console.error('❌ Logout error:', error);
-          Alert.alert('Error', 'Logout failed: ' + error.message);
-            }
+          onPress={() => {
+            Alert.alert(
+              'Log Out',
+              'Are you sure you want to log out? You will need to sign in again to access your account.',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Log Out',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      console.log('🔐 LOGOUT CONFIRMED');
+                      await signOut();
+                      console.log('✅ SignOut completed');
+                      console.log('🔄 Redirecting to login...');
+                      router.replace('/auth/login');
+                    } catch (error: any) {
+                      console.error('❌ Logout error:', error);
+                      Alert.alert('Error', 'Logout failed: ' + error.message);
+                    }
+                  },
+                },
+              ]
+            );
           }}>
           <LogOut size={20} color="#ff4444" strokeWidth={2} />
           <Text style={styles.logoutText}>Log Out</Text>

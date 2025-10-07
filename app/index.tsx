@@ -33,7 +33,7 @@ export default function IndexScreen() {
 
   return (
     <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#c9a961" />
+      <ActivityIndicator size="large" color="#c9a961" style={styles.spinner} />
       <Text style={styles.loadingText}>Loading...</Text>
     </View>
   );
@@ -46,10 +46,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#0f0f0f',
   },
+  spinner: {
+    marginBottom: 20,
+  },
   loadingText: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
-    color: '#999999',
-    marginTop: 12,
+    color: '#c9a961',
+    letterSpacing: 0.5,
   },
 });

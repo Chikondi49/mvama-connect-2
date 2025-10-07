@@ -1,15 +1,18 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ArrowRight, BookOpen, Heart, Play, Users } from 'lucide-react-native';
+import { ArrowRight, BookOpen, Calendar, Heart, Play, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { Event, eventService } from '../../services/eventService';
 import { youtubeService, YouTubeVideo } from '../../services/youtubeService';
 
 export default function HomeScreen() {
   const { user, userProfile } = useAuth();
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Get user's first name
@@ -20,20 +23,29 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    const fetchVideos = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
+        setEventsLoading(true);
         setError(null);
-        const videos = await youtubeService.getChannelVideos();
-        setVideos(videos);
+        
+        // Fetch videos and events in parallel
+        const [videosData, eventsData] = await Promise.all([
+          youtubeService.getChannelVideos(),
+          eventService.getUpcomingEvents()
+        ]);
+        
+        setVideos(videosData);
+        setEvents(eventsData);
       } catch (err) {
-        console.error('Error fetching videos:', err);
-        setError('Failed to load sermons');
+        console.error('Error fetching data:', err);
+        setError('Failed to load content');
       } finally {
         setLoading(false);
+        setEventsLoading(false);
       }
     };
-    fetchVideos();
+    fetchData();
   }, []);
 
   const handleSermonPress = (videoId: string) => {
@@ -42,6 +54,14 @@ export default function HomeScreen() {
 
   const handleSeeAllSermons = () => {
     router.push(`/(tabs)/sermons`);
+  };
+
+  const handleSeeAllEvents = () => {
+    router.push(`/(tabs)/events`);
+  };
+
+  const handleEventPress = (eventId: string) => {
+    router.push(`/events/${eventId}`);
   };
 
   const handleActionPress = (action: string) => {
@@ -119,6 +139,55 @@ export default function HomeScreen() {
             <Text style={styles.actionTitle}>Bible</Text>
             <Text style={styles.actionSubtitle}>Daily reading</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Upcoming Events Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Upcoming Events</Text>
+            <TouchableOpacity style={styles.seeAllButton} onPress={handleSeeAllEvents}>
+              <Text style={styles.seeAllText}>See All</Text>
+              <ArrowRight size={16} color="#c9a961" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+
+          {eventsLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#c9a961" />
+              <Text style={styles.loadingText}>Loading events...</Text>
+            </View>
+          ) : events.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Calendar size={48} color="#666666" strokeWidth={1.5} />
+              <Text style={styles.emptyTitle}>No Upcoming Events</Text>
+              <Text style={styles.emptySubtitle}>Check back later for new events</Text>
+            </View>
+          ) : (
+            <View style={styles.eventsList}>
+              {events.slice(0, 3).map((event) => (
+                <TouchableOpacity
+                  key={event.id}
+                  style={styles.eventCard}
+                  onPress={() => handleEventPress(event.id)}>
+                  <View style={styles.eventContent}>
+                    <View style={styles.eventHeader}>
+                      <Text style={styles.eventTitle}>{event.title}</Text>
+                      <Text style={styles.eventCategory}>{event.category}</Text>
+                    </View>
+                    <Text style={styles.eventDescription} numberOfLines={2}>
+                      {event.description}
+                    </Text>
+                    <View style={styles.eventDetails}>
+                      <Text style={styles.eventDate}>{event.date}</Text>
+                      <Text style={styles.eventTime}>{event.time}</Text>
+                      <Text style={styles.eventLocation}>{event.location}</Text>
+                    </View>
+                  </View>
+                  <ArrowRight size={20} color="#666666" strokeWidth={2} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -363,6 +432,92 @@ const styles = StyleSheet.create({
   actionSubtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 11,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  eventsList: {
+    gap: 12,
+  },
+  eventCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  eventContent: {
+    flex: 1,
+  },
+  eventHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  eventTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 15,
+    color: '#ffffff',
+    flex: 1,
+    marginRight: 8,
+  },
+  eventCategory: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 11,
+    color: '#c9a961',
+    backgroundColor: '#2a2a2a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  eventDescription: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 13,
+    color: '#cccccc',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  eventDetails: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  eventDate: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#c9a961',
+  },
+  eventTime: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#999999',
+  },
+  eventLocation: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#999999',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  emptyTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+    color: '#ffffff',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
     color: '#666666',
     textAlign: 'center',
   },

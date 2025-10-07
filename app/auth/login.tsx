@@ -86,20 +86,15 @@ export default function LoginScreen() {
       console.error('❌ Login failed:', error);
       
       // Handle specific Firebase auth errors
-      let errorMessage = 'Unable to Sign-In!';
+      let errorMessage = 'Invalid email or password. Please check your credentials and try again.';
       
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email address';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
-      } else if (error.code === 'auth/user-disabled') {
+      // Only show specific messages for non-credential related errors
+      if (error.code === 'auth/user-disabled') {
         errorMessage = 'This account has been disabled';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed attempts. Please try again later';
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection';
       }
       
       // Show error notification

@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { Calendar as CalendarIcon, ChevronRight, Clock, MapPin, Users } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -66,6 +67,7 @@ const upcomingEvents = [
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function EventsScreen() {
+  const router = useRouter();
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,10 @@ export default function EventsScreen() {
         }}
       ]
     );
+  };
+
+  const handleEventPress = (eventId: string) => {
+    router.push(`/events/${eventId}`);
   };
 
   const featuredEvent = events.find(event => event.category === 'Sunday Service');
@@ -200,7 +206,10 @@ export default function EventsScreen() {
           {regularEvents.map((event) => {
             const { day, month } = parseDate(event.date);
             return (
-              <TouchableOpacity key={event.id} style={styles.eventCard}>
+              <TouchableOpacity 
+                key={event.id} 
+                style={styles.eventCard}
+                onPress={() => handleEventPress(event.id)}>
                 <View style={styles.eventDate}>
                   <Text style={styles.eventDay}>{day}</Text>
                   <Text style={styles.eventMonth}>{month}</Text>
