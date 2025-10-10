@@ -75,6 +75,7 @@ class EventService {
         orderBy('date', 'asc')
       );
       const querySnapshot = await getDocs(q);
+      console.log('📅 Query snapshot size:', querySnapshot.size);
       
       const events: Event[] = [];
       querySnapshot.forEach((doc) => {
@@ -98,10 +99,18 @@ class EventService {
       });
       
       console.log(`✅ Fetched ${events.length} upcoming events`);
+      
+      // If no events found, return Events tab data for development
+      if (events.length === 0) {
+        console.log('📅 No events found, returning Events tab data for development');
+        return this.getEventsTabData();
+      }
+      
       return events;
     } catch (error) {
       console.error('❌ Error fetching upcoming events:', error);
-      return [];
+      console.log('📅 Returning Events tab data as fallback');
+      return this.getEventsTabData();
     }
   }
 
@@ -252,6 +261,172 @@ class EventService {
       console.error('❌ Error fetching events requiring registration:', error);
       return [];
     }
+  }
+
+  // Events tab data for development
+  private getEventsTabData(): Event[] {
+    return [
+      {
+        id: 'events-tab-001',
+        title: 'Youth Night Worship',
+        description: 'An evening of powerful worship, testimonies, and fellowship designed for young adults and teens.',
+        date: new Date('2024-11-15').toISOString(),
+        time: '7:00 PM - 9:30 PM',
+        location: 'Main Sanctuary',
+        category: 'Youth',
+        imageUrl: 'https://images.pexels.com/photos/5935205/pexels-photo-5935205.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: false,
+        status: 'upcoming',
+        tags: ['youth', 'worship', 'fellowship'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'events-tab-002',
+        title: 'Community Outreach',
+        description: 'Join us as we serve our local community through food distribution and community support.',
+        date: new Date('2024-11-22').toISOString(),
+        time: '9:00 AM - 1:00 PM',
+        location: 'Community Center',
+        category: 'Service',
+        imageUrl: 'https://images.pexels.com/photos/6646917/pexels-photo-6646917.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: true,
+        status: 'upcoming',
+        tags: ['outreach', 'community', 'service'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'events-tab-003',
+        title: 'Thanksgiving Service',
+        description: 'A special service of gratitude and celebration with worship, testimonies, and fellowship.',
+        date: new Date('2024-11-28').toISOString(),
+        time: '10:00 AM - 12:00 PM',
+        location: 'Main Sanctuary',
+        category: 'Service',
+        imageUrl: 'https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: false,
+        status: 'upcoming',
+        tags: ['thanksgiving', 'worship', 'celebration'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'events-tab-004',
+        title: 'Christmas Choir Rehearsal',
+        description: 'Practice sessions for our annual Christmas musical performance. All voices welcome.',
+        date: new Date('2024-12-01').toISOString(),
+        time: '6:00 PM - 8:00 PM',
+        location: 'Music Room',
+        category: 'Music',
+        imageUrl: 'https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: true,
+        status: 'upcoming',
+        tags: ['choir', 'christmas', 'music'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'events-tab-005',
+        title: 'Advent Study Group',
+        description: 'A four-week study exploring the themes of Advent and preparing our hearts for Christmas.',
+        date: new Date('2024-12-08').toISOString(),
+        time: '7:00 PM - 8:30 PM',
+        location: 'Fellowship Hall',
+        category: 'Study',
+        imageUrl: 'https://images.pexels.com/photos/8468012/pexels-photo-8468012.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: true,
+        status: 'upcoming',
+        tags: ['advent', 'study', 'christmas'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+  }
+
+  // Mock events for development
+  private getMockEvents(): Event[] {
+    return [
+      {
+        id: 'mock-event-001',
+        title: 'Sunday Service',
+        description: 'Join us for our weekly Sunday worship service with inspiring messages, fellowship, and community.',
+        date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
+        time: '10:00 AM',
+        location: 'MVAMA CCAP NKHOMA SYNOD Church',
+        category: 'Sunday Service',
+        imageUrl: 'https://images.pexels.com/photos/8468012/pexels-photo-8468012.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: false,
+        status: 'upcoming',
+        tags: ['worship', 'sunday', 'service'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'mock-event-002',
+        title: 'Youth Fellowship Meeting',
+        description: 'Monthly youth fellowship gathering with games, discussions, and spiritual growth activities.',
+        date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days from now
+        time: '6:00 PM',
+        location: 'Church Youth Hall',
+        category: 'Youth Event',
+        imageUrl: 'https://images.pexels.com/photos/8828591/pexels-photo-8828591.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: true,
+        status: 'upcoming',
+        tags: ['youth', 'fellowship', 'meeting'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'mock-event-003',
+        title: 'Prayer and Fasting Week',
+        description: 'A week of prayer and fasting for spiritual renewal and community strengthening.',
+        date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        time: 'All Day',
+        location: 'Church and Online',
+        category: 'Prayer Meeting',
+        imageUrl: 'https://images.pexels.com/photos/8535230/pexels-photo-8535230.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: false,
+        status: 'upcoming',
+        tags: ['prayer', 'fasting', 'spiritual'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'mock-event-004',
+        title: 'Women\'s Fellowship Breakfast',
+        description: 'Monthly women\'s fellowship breakfast with guest speaker and community building.',
+        date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days from now
+        time: '8:00 AM',
+        location: 'Church Fellowship Hall',
+        category: 'Women\'s Event',
+        imageUrl: 'https://images.pexels.com/photos/8940091/pexels-photo-8940091.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: true,
+        maxAttendees: 50,
+        currentAttendees: 23,
+        status: 'upcoming',
+        tags: ['women', 'fellowship', 'breakfast'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'mock-event-005',
+        title: 'Community Outreach Program',
+        description: 'Join us in serving our community through various outreach activities and programs.',
+        date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days from now
+        time: '9:00 AM',
+        location: 'Various Community Locations',
+        category: 'Special Event',
+        imageUrl: 'https://images.pexels.com/photos/8468068/pexels-photo-8468068.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        registrationRequired: true,
+        contactPerson: 'Rev. Yassin Gammah',
+        contactPhone: '+265-XXX-XXXX',
+        status: 'upcoming',
+        tags: ['outreach', 'community', 'service'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
   }
 }
 

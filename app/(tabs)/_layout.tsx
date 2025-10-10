@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { BookOpen, Calendar, Hop as Home, Newspaper, Settings } from 'lucide-react-native';
+import { Book, BookOpen, Calendar, Hop as Home, Newspaper, Settings } from 'lucide-react-native';
 import AuthWrapper from '../../components/AuthWrapper';
 
 export default function TabLayout() {
@@ -38,6 +38,15 @@ export default function TabLayout() {
           title: 'Sermons',
           tabBarIcon: ({ size, color }) => (
             <BookOpen size={size} color={color} strokeWidth={2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bible"
+        options={{
+          title: 'Bible',
+          tabBarIcon: ({ size, color }) => (
+            <Book size={size} color={color} strokeWidth={2} />
           ),
         }}
       />

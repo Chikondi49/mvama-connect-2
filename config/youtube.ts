@@ -13,7 +13,7 @@ export const YOUTUBE_CONFIG = {
   // MVAMA CCAP NKHOMA SYNOD channel information
   CHANNEL: {
     HANDLE: '@mvamaccapnkhomasynod',
-    NAME: 'MVAMA CCAP NKHOMA SYNOD (Rev. Yassin Gammah)',
+    NAME: 'Mvama CCAP Nkhoma Synod',
     // You can find the channel ID by visiting the channel and looking at the URL
     // or by using the YouTube API to search for the channel
     ID: '', // Will be fetched dynamically if not provided

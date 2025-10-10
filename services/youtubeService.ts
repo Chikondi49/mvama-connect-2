@@ -66,6 +66,7 @@ class YouTubeService {
     console.log('   - USE_MOCK_DATA:', this.USE_MOCK_DATA);
     console.log('   - API_KEY:', this.API_KEY.substring(0, 10) + '...');
     console.log('   - CHANNEL_HANDLE:', this.CHANNEL_HANDLE);
+    console.log('   - BASE_URL:', this.BASE_URL);
     
     // Use mock data if configured or if no API key is provided
     if (this.USE_MOCK_DATA || this.API_KEY === 'YOUR_YOUTUBE_API_KEY_HERE') {
@@ -74,6 +75,36 @@ class YouTubeService {
     }
     
     console.log('🌐 Attempting to fetch real YouTube data...');
+    
+    // Test API key first
+    try {
+      const testUrl = `${this.BASE_URL}/search?part=snippet&q=test&type=video&key=${this.API_KEY}&maxResults=1`;
+      console.log('🧪 Testing API key with URL:', testUrl);
+      const testResponse = await fetch(testUrl);
+      console.log('🧪 Test response status:', testResponse.status);
+      
+      if (!testResponse.ok) {
+        const testData = await testResponse.json();
+        console.error('❌ API key test failed with status:', testResponse.status);
+        console.error('❌ Test error response:', testData);
+        
+        // Check for quota exceeded error
+        if (testData.error && testData.error.code === 403 && testData.error.message.includes('quota')) {
+          console.error('🚫 YouTube API quota exceeded!');
+          console.log('⏳ Waiting for quota renewal - returning empty array');
+          return [];
+        }
+        
+        throw new Error(`API key test failed: ${testResponse.status}`);
+      }
+      
+      const testData = await testResponse.json();
+      console.log('✅ API key test successful:', testData.items?.length || 0, 'items found');
+    } catch (testError) {
+      console.error('❌ API key test failed:', testError);
+      console.log('🔄 Falling back to mock data due to API key test failure');
+      return this.getMockVideos(maxResults);
+    }
     
     try {
       let actualChannelId = channelId;
@@ -93,7 +124,16 @@ class YouTubeService {
         if (searchData.error) {
           console.error('❌ YouTube API Error:', searchData.error.message);
           console.error('❌ Error details:', searchData.error);
-          return [];
+          
+          // Check for quota exceeded error
+          if (searchData.error.code === 403 && searchData.error.message.includes('quota')) {
+            console.error('🚫 YouTube API quota exceeded during channel search!');
+            console.log('⏳ Waiting for quota renewal - returning empty array');
+            return [];
+          }
+          
+          console.log('🔄 Falling back to mock data due to API error');
+          return this.getMockVideos(maxResults);
         }
         
         if (searchData.items && searchData.items.length > 0) {
@@ -105,7 +145,7 @@ class YouTubeService {
           console.log('🔍 Trying alternative search terms...');
           
           // Try alternative search terms
-          const alternatives = ['MVAMA CCAP NKHOMA SYNOD', 'Rev. Yassin Gammah', 'CCAP NKHOMA'];
+          const alternatives = ['Mvama CCAP Nkhoma Synod', 'MVAMA CCAP NKHOMA SYNOD', 'Rev. Yassin Gammah', 'CCAP NKHOMA'];
           for (const term of alternatives) {
             console.log('🔍 Trying alternative search:', term);
             const altSearchUrl = `${this.BASE_URL}/search?part=snippet&type=channel&q=${encodeURIComponent(term)}&key=${this.API_KEY}`;
@@ -122,7 +162,47 @@ class YouTubeService {
           
           if (!actualChannelId) {
             console.error('❌ No channel found with any search term');
-            return [];
+            console.log('🔄 Trying direct video search as fallback...');
+            
+            // Fallback: Search for videos directly
+            const videoSearchUrl = `${this.BASE_URL}/search?part=snippet&type=video&q=${encodeURIComponent('Mvama CCAP Nkhoma Synod')}&key=${this.API_KEY}&maxResults=${maxResults}`;
+            console.log('🔍 Direct video search URL:', videoSearchUrl);
+            
+            const videoResponse = await fetch(videoSearchUrl);
+            const videoData = await videoResponse.json();
+            
+            if (videoData.error) {
+              console.error('❌ Direct video search failed:', videoData.error);
+              
+              // Check for quota exceeded error
+              if (videoData.error.code === 403 && videoData.error.message.includes('quota')) {
+                console.error('🚫 YouTube API quota exceeded during video search!');
+                console.log('⏳ Waiting for quota renewal - returning empty array');
+                return [];
+              }
+              
+              console.log('🔄 Falling back to mock data');
+              return this.getMockVideos(maxResults);
+            }
+            
+            if (videoData.items && videoData.items.length > 0) {
+              console.log('✅ Found', videoData.items.length, 'videos via direct search');
+              const videos = videoData.items.map((item: any) => ({
+                id: item.id.videoId,
+                title: item.snippet.title,
+                description: item.snippet.description,
+                thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url,
+                publishedAt: item.snippet.publishedAt,
+                duration: 'Unknown',
+                viewCount: 'Unknown',
+                channelTitle: item.snippet.channelTitle,
+              }));
+              return videos;
+            } else {
+              console.log('⚠️ No videos found via direct search');
+              console.log('🔄 Falling back to mock data');
+              return this.getMockVideos(maxResults);
+            }
           }
         }
       }
@@ -211,16 +291,20 @@ class YouTubeService {
       return videos;
     } catch (error) {
       console.error('❌ Error fetching videos:', error);
+      console.log('⏳ API error - returning empty array');
       return [];
     }
   }
 
   // Get mock videos for development/demo
   private getMockVideos(maxResults: number): YouTubeVideo[] {
-    return MOCK_SERMONS.slice(0, maxResults).map(sermon => ({
+    console.log('📱 Returning mock videos for development');
+    const mockVideos = MOCK_SERMONS.slice(0, maxResults).map(sermon => ({
       ...sermon,
       publishedAt: sermon.publishedAt,
     }));
+    console.log('📱 Mock videos count:', mockVideos.length);
+    return mockVideos;
   }
 
   // Format ISO 8601 duration to readable format

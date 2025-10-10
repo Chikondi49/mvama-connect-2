@@ -42,6 +42,7 @@ export default function GiveScreen() {
       ]);
       
       console.log(`✅ Loaded ${options.length} giving options and ${methods.length} payment methods`);
+      console.log('📊 Payment methods:', methods);
       setGivingOptions(options);
       setPaymentMethods(methods);
     } catch (error) {
@@ -59,6 +60,7 @@ export default function GiveScreen() {
         { id: '2', name: 'Airtel Money 2', type: 'airtel', icon: 'Smartphone', isActive: true, order: 2 },
         { id: '3', name: 'TNM Mpamba', type: 'tnm', icon: 'Smartphone', isActive: true, order: 3 },
       ];
+      console.log('📊 Using fallback payment methods:', fallbackMethods);
       setPaymentMethods(fallbackMethods);
     } finally {
       setLoading(false);
@@ -342,6 +344,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2a2a2a',
     paddingHorizontal: 16,
+    minHeight: 48,
   },
   dollarSign: {
     fontFamily: 'Inter-SemiBold',
@@ -365,6 +368,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#2a2a2a',
+    minHeight: 56,
   },
   selectedPaymentMethod: {
     borderColor: '#c9a961',

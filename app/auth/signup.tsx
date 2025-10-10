@@ -4,7 +4,6 @@ import { ArrowLeft, Eye, EyeOff, HelpCircle, Lock, Mail, Phone, User } from 'luc
 import { useState } from 'react';
 import {
     ActivityIndicator,
-    ImageBackground,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -213,13 +212,9 @@ export default function SignUpScreen() {
         type={notification.type}
         onHide={hideNotification}
       />
-      <ImageBackground
-        source={require('../../assets/images/church-background.jpg')}
-        style={styles.backgroundImage}
-        imageStyle={styles.backgroundImageStyle}>
-        <LinearGradient
-          colors={['rgba(15,15,15,0.4)', 'rgba(15,15,15,0.8)']}
-          style={styles.gradient}>
+      <LinearGradient
+        colors={['#0f0f0f', '#1a1a1a']}
+        style={styles.gradient}>
           
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -464,7 +459,6 @@ export default function SignUpScreen() {
             </ScrollView>
           </KeyboardAvoidingView>
         </LinearGradient>
-      </ImageBackground>
     </View>
   );
 }
@@ -473,13 +467,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
-  },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-  },
-  backgroundImageStyle: {
-    resizeMode: 'cover',
   },
   gradient: {
     flex: 1,
@@ -532,7 +519,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
     paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingVertical: 12,
+    minHeight: 48,
   },
   inputWrapperError: {
     backgroundColor: 'rgba(255, 107, 107, 0.1)',

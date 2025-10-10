@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Clock, Download, Headphones, ListMusic, Pause, Play, Search, SkipBack, SkipForward, Users, Video } from 'lucide-react-native';
+import { Clock, Download, Headphones, Pause, Play, Search, SkipBack, SkipForward, Users, Video } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -193,6 +193,7 @@ export default function SermonsScreen() {
   const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
   const [showGlobalPlayer, setShowGlobalPlayer] = useState(false);
   const [currentPlayingSeries, setCurrentPlayingSeries] = useState<string | null>(null);
+  const [showSearchInterface, setShowSearchInterface] = useState(false);
 
   // Helper function to format sermon dates safely
   const formatSermonDate = (dateString: string): string => {
@@ -273,12 +274,23 @@ export default function SermonsScreen() {
   const loadSermons = async () => {
     try {
       setLoading(true);
-      console.log('📺 Loading video sermons...');
+      console.log('📺 Loading video sermons from YouTube API...');
       const videos = await youtubeService.getChannelVideos();
       console.log('📊 Loaded video sermons:', videos.length);
+      console.log('📊 Video titles:', videos.map(v => v.title));
+      
+      if (videos.length === 0) {
+        console.log('⚠️ No videos returned from YouTube API');
+      } else {
+        console.log('✅ Successfully loaded videos from YouTube API');
+      }
+      
       setSermons(videos);
     } catch (error) {
       console.error('❌ Error loading video sermons:', error);
+      console.log('🔄 YouTube API failed, using fallback data');
+      // Set empty array on error to prevent undefined issues
+      setSermons([]);
     } finally {
       setLoading(false);
     }
@@ -929,12 +941,77 @@ export default function SermonsScreen() {
     setRefreshing(false);
   };
 
+  // Group video sermons by category
+  const getVideoSermonsByCategory = () => {
+    const categories = [
+      'Sunday Service',
+      'Morning Devotion', 
+      'Prayer and Fasting',
+      'Chigwirizano',
+      'Youth Service',
+      'Women\'s Fellowship',
+      'Men\'s Fellowship',
+      'Children\'s Service',
+      'Special Events',
+      'Other'
+    ];
+
+    return categories.map(category => {
+      const sermons = filteredVideoSermons.filter(sermon => {
+        const title = sermon.title.toLowerCase();
+        const description = sermon.description?.toLowerCase() || '';
+        
+        // Categorize based on title and description keywords
+        if (category === 'Sunday Service') {
+          return title.includes('sunday') || title.includes('service') || 
+                 description.includes('sunday service') || description.includes('worship');
+        } else if (category === 'Morning Devotion') {
+          return title.includes('morning') || title.includes('devotion') || 
+                 description.includes('morning devotion') || description.includes('daily devotion');
+        } else if (category === 'Prayer and Fasting') {
+          return title.includes('prayer') || title.includes('fasting') || 
+                 description.includes('prayer') || description.includes('fasting');
+        } else if (category === 'Chigwirizano') {
+          return title.includes('chigwirizano') || title.includes('fellowship') || 
+                 description.includes('chigwirizano') || description.includes('fellowship');
+        } else if (category === 'Youth Service') {
+          return title.includes('youth') || title.includes('young') || 
+                 description.includes('youth') || description.includes('young people');
+        } else if (category === 'Women\'s Fellowship') {
+          return title.includes('women') || title.includes('ladies') || 
+                 description.includes('women') || description.includes('ladies');
+        } else if (category === 'Men\'s Fellowship') {
+          return title.includes('men') || title.includes('brothers') || 
+                 description.includes('men') || description.includes('brothers');
+        } else if (category === 'Children\'s Service') {
+          return title.includes('children') || title.includes('kids') || 
+                 description.includes('children') || description.includes('kids');
+        } else if (category === 'Special Events') {
+          return title.includes('special') || title.includes('event') || 
+                 description.includes('special event') || description.includes('celebration');
+        }
+        
+        return false;
+      });
+
+      return {
+        category,
+        sermons
+      };
+    }).filter(group => group.sermons.length > 0);
+  };
+
   const isRecent = (publishedAt: string): boolean => {
     const publishDate = new Date(publishedAt);
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - publishDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 30; // Consider videos from last 30 days as recent
+    return diffDays <= 7; // Consider episodes from last 7 days as recent
+  };
+
+  // Check if series has recent episodes
+  const hasRecentEpisodes = (series: PodcastSeries): boolean => {
+    return series.episodes.some(episode => isRecent(episode.publishedAt));
   };
 
   // Filter podcast series
@@ -1007,7 +1084,7 @@ export default function SermonsScreen() {
   // Filter video sermons
   const filteredVideoSermons = sermons.filter(sermon => {
     const matchesSearch = sermon.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         sermon.description.toLowerCase().includes(searchQuery.toLowerCase());
+                         (sermon.description?.toLowerCase() || '').includes(searchQuery.toLowerCase());
     
     let matchesCategory = false;
     
@@ -1043,14 +1120,16 @@ export default function SermonsScreen() {
       {/* Global Player */}
       <GlobalPlayer />
       
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Sermons</Text>
-        <Text style={styles.headerSubtitle}>Messages from MVAMA CCAP Nkhoma Synod</Text>
-        <View style={styles.channelInfo}>
-          <Users size={16} color="#c9a961" strokeWidth={2} />
-          <Text style={styles.channelText}>Rev. Yassin Gammah</Text>
+      {/* Modern Header Section */}
+      <View style={styles.modernHeader}>
+        <View style={styles.headerTop}>
+          <Text style={styles.modernHeaderTitle}>Sermons</Text>
+          <View style={styles.channelBadge}>
+            <Users size={14} color="#c9a961" strokeWidth={2} />
+            <Text style={styles.channelBadgeText}>Rev. Yassin Gammah</Text>
+          </View>
         </View>
+        <Text style={styles.modernHeaderSubtitle}>Messages from MVAMA CCAP Nkhoma Synod</Text>
       </View>
 
       {/* Tab Navigation */}
@@ -1073,45 +1152,45 @@ export default function SermonsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Search and Filters Section - Hidden when viewing series */}
-      {!selectedSeries && (
-        <View style={styles.filtersSection}>
+      {/* Search and Filters Interface - Only shown when toggled */}
+      {!selectedSeries && showSearchInterface && (
+        <View style={styles.searchInterface}>
           {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Search size={20} color="#666666" strokeWidth={2} />
-        <TextInput
-          style={styles.searchInput}
+          <View style={styles.searchContainer}>
+            <Search size={20} color="#666666" strokeWidth={2} />
+            <TextInput
+              style={styles.searchInput}
               placeholder={`Search ${activeTab} sermons...`}
-          placeholderTextColor="#666666"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
+              placeholderTextColor="#666666"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
 
           {/* Category Filters */}
           <View style={styles.categoriesWrapper}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesContent}>
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category && styles.categoryButtonActive,
-            ]}
-            onPress={() => setSelectedCategory(category)}>
-            <Text
-              style={[
-                styles.categoryText,
-                selectedCategory === category && styles.categoryTextActive,
-              ]}>
-              {category}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoriesContent}>
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryButton,
+                    selectedCategory === category && styles.categoryButtonActive,
+                  ]}
+                  onPress={() => setSelectedCategory(category)}>
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === category && styles.categoryTextActive,
+                    ]}>
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </View>
       )}
@@ -1166,57 +1245,75 @@ export default function SermonsScreen() {
                   
                   <View style={styles.episodesList}>
                     {filteredEpisodes.map((episode) => (
-                      <View key={episode.id} style={[styles.episodeCard, styles.episodeCardIndented]}>
-                        <View style={styles.episodeContent}>
-                          <View style={styles.episodeBanner}>
-                            <Text style={styles.episodeBannerText}>EPISODE {episode.episodeNumber}</Text>
+                      <View key={episode.id} style={styles.episodeListItem}>
+                        {/* Vertical Episode Banner */}
+                        <View style={styles.episodeListBanner}>
+                          <Text style={styles.episodeListBannerText}>EPISODE</Text>
+                        </View>
+                        
+                        <View style={styles.episodeListContent}>
+                          {/* Episode Number */}
+                          <View style={styles.episodeListNumber}>
+                            <Text style={styles.episodeListNumberText}>{episode.episodeNumber}</Text>
                           </View>
-                          <View style={styles.episodeDetails}>
-                            <Text style={styles.episodeTitle} numberOfLines={2}>{episode.title}</Text>
-                            <Text style={styles.episodeDescription} numberOfLines={2}>{episode.description}</Text>
-                            <View style={styles.episodeMeta}>
-                              <View style={styles.metaItem}>
-                                <Clock size={14} color="#666666" strokeWidth={2} />
-                                <Text style={styles.metaText}>{episode.duration}</Text>
+                          
+                          {/* Episode Info */}
+                          <View style={styles.episodeListInfo}>
+                            <Text style={styles.episodeListTitle} numberOfLines={2}>
+                              {episode.title}
+                            </Text>
+                            <Text style={styles.episodeListSpeaker} numberOfLines={1}>
+                              {episode.speaker}
+                            </Text>
+                            
+                            {/* Episode Meta */}
+                            <View style={styles.episodeListMeta}>
+                              <View style={styles.episodeListMetaItem}>
+                                <Clock size={12} color="#c9a961" strokeWidth={2} />
+                                <Text style={styles.episodeListMetaText}>{episode.duration}</Text>
                               </View>
-                              <Text style={styles.metaDivider}>•</Text>
-                              <Text style={styles.metaText}>
+                              <Text style={styles.episodeListMetaDivider}>•</Text>
+                              <Text style={styles.episodeListMetaText}>
                                 {youtubeService.formatPublishedDate(episode.publishedAt)}
                               </Text>
-                              <TouchableOpacity 
-                                style={styles.downloadButton}
-                                onPress={() => downloadAudio(episode)}>
-                                <Download size={16} color="#c9a961" strokeWidth={2} />
-                              </TouchableOpacity>
                             </View>
                           </View>
-                            <TouchableOpacity 
-                              style={[
-                                styles.episodePlayButton,
-                                playingAudio === episode.id && isPlaying && styles.episodePlayButtonActive
-                              ]}
-                              onPress={() => playAudio(episode)}
-                              activeOpacity={0.7}>
-                              {playingAudio === episode.id && isPlaying ? (
-                                <Pause size={20} color="#c9a961" fill="#c9a961" />
-                              ) : (
-                                <Play size={20} color="#c9a961" fill="#c9a961" />
-                              )}
-                            </TouchableOpacity>
+                        </View>
+                        
+                        {/* Action Buttons - Moved to end */}
+                        <View style={styles.episodeListActions}>
+                          <TouchableOpacity 
+                            style={styles.episodeListDownloadButton}
+                            onPress={() => downloadAudio(episode)}>
+                            <Download size={16} color="#c9a961" strokeWidth={2} />
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity 
+                            style={[
+                              styles.episodeListPlayButton,
+                              playingAudio === episode.id && isPlaying && styles.episodeListPlayButtonActive
+                            ]}
+                            onPress={() => playAudio(episode)}>
+                            {playingAudio === episode.id && isPlaying ? (
+                              <Pause size={20} color="#ffffff" fill="#ffffff" />
+                            ) : (
+                              <Play size={20} color="#ffffff" fill="#ffffff" />
+                            )}
+                          </TouchableOpacity>
                         </View>
                         
                         {/* Audio Progress Indicator */}
                         {playingAudio === episode.id && currentEpisode && (
-                          <View style={styles.audioProgressIndicator}>
-                            <View style={styles.progressBar}>
+                          <View style={styles.episodeListProgress}>
+                            <View style={styles.episodeListProgressBar}>
                               <View 
                                 style={[
-                                  styles.progressFill, 
+                                  styles.episodeListProgressFill, 
                                   { width: `${(currentTime / duration) * 100}%` }
                                 ]} 
                               />
                             </View>
-                            <Text style={styles.progressText}>
+                            <Text style={styles.episodeListProgressText}>
                               {formatTime(currentTime)} / {formatTime(duration)}
                             </Text>
                           </View>
@@ -1229,12 +1326,22 @@ export default function SermonsScreen() {
                 // Series List View
                 <>
                   <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>
-                      {selectedCategory === 'All' ? 'Podcast Series' : selectedCategory}
-                    </Text>
-                    <Text style={styles.sectionSubtitle}>
-                      {filteredPodcastSeries.length} {filteredPodcastSeries.length === 1 ? 'series' : 'series'} found
-                    </Text>
+                    <View style={styles.sectionHeaderTop}>
+                      <View style={styles.sectionHeaderLeft}>
+                        <Text style={styles.sectionTitle}>
+                          {selectedCategory === 'All' ? 'Podcast Series' : selectedCategory}
+                        </Text>
+                        <Text style={styles.sectionSubtitle}>
+                          {filteredPodcastSeries.length} {filteredPodcastSeries.length === 1 ? 'series' : 'series'} found
+                        </Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.sectionSearchButton}
+                        onPress={() => setShowSearchInterface(!showSearchInterface)}
+                        activeOpacity={0.7}>
+                        <Search size={18} color="#c9a961" strokeWidth={2} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   
                   {(forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).length === 0 ? (
@@ -1245,38 +1352,53 @@ export default function SermonsScreen() {
               </Text>
             </View>
           ) : (
-                    (forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).map((series) => (
-                      <TouchableOpacity 
-                        key={series.id} 
-                        style={styles.podcastSeriesCard}
-                        onPress={() => openSeries(series)}>
-                        <ImageBackground
-                          source={{ uri: series.coverImage }}
-                          style={styles.podcastSeriesCover}
-                          imageStyle={styles.podcastSeriesCoverStyle}>
-                          <LinearGradient
-                            colors={['rgba(15,15,15,0.3)', 'rgba(15,15,15,0.8)']}
-                            style={styles.podcastSeriesGradient}>
-                             <View style={styles.podcastPlayIconContainer}>
-                               <ListMusic size={32} color="#ffffff" fill="#ffffff" />
-                             </View>
-                          </LinearGradient>
-                        </ImageBackground>
-                        <View style={styles.podcastSeriesInfo}>
-                          <Text style={styles.podcastSeriesCategory}>{series.category}</Text>
-                          <Text style={styles.podcastSeriesTitle} numberOfLines={2}>{series.title}</Text>
-                          <Text style={styles.podcastSeriesSpeaker}>{series.speaker}</Text>
-                          <Text style={styles.podcastSeriesDescription} numberOfLines={3}>
-                            {series.description}
-                          </Text>
-                          <View style={styles.podcastSeriesMeta}>
-                            <Text style={styles.podcastEpisodeCount}>{series.totalEpisodes} episodes</Text>
-                            <Text style={styles.metaDivider}>•</Text>
-                            <Text style={styles.podcastSeriesTap}>Tap to view episodes</Text>
+                    <View style={styles.seriesGrid}>
+                      {(forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).map((series, index) => (
+                        <TouchableOpacity 
+                          key={series.id} 
+                          style={[
+                            styles.seriesTile,
+                            index % 2 === 0 ? styles.seriesTileLeft : styles.seriesTileRight
+                          ]}
+                          onPress={() => openSeries(series)}
+                          activeOpacity={0.8}>
+                          
+                          {/* Series Thumbnail */}
+                          <View style={styles.seriesTileThumbnail}>
+                            <ImageBackground
+                              source={{ uri: series.coverImage }}
+                              style={styles.seriesTileImage}
+                              imageStyle={styles.seriesTileImageStyle}>
+                            </ImageBackground>
+                            
+                            {/* NEW Banner for recent episodes */}
+                            {hasRecentEpisodes(series) && (
+                              <View style={styles.newBanner}>
+                                <Text style={styles.newBannerText}>NEW</Text>
+                              </View>
+                            )}
                           </View>
-                        </View>
-                      </TouchableOpacity>
-                    ))
+                          
+                          {/* Series Content */}
+                          <View style={styles.seriesTileContent}>
+                            <Text style={styles.seriesTileCategory}>{series.category}</Text>
+                            <Text style={styles.seriesTileTitle} numberOfLines={2}>
+                              {series.title}
+                            </Text>
+                            <Text style={styles.seriesTileSpeaker} numberOfLines={1}>
+                              {series.speaker}
+                            </Text>
+                            
+                            {/* Series Meta */}
+                            <View style={styles.seriesTileMeta}>
+                              <Text style={styles.seriesTileEpisodeCount}>
+                                {series.totalEpisodes} episodes
+                              </Text>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   )}
                 </>
               )}
@@ -1285,66 +1407,115 @@ export default function SermonsScreen() {
             // Video Sermons Section
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>
-                  {selectedCategory === 'All' ? 'Video Sermons' : selectedCategory}
-                </Text>
-                <Text style={styles.sectionSubtitle}>
-                  {filteredVideoSermons.length} {filteredVideoSermons.length === 1 ? 'sermon' : 'sermons'} found
-                </Text>
+                <View style={styles.sectionHeaderTop}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <Text style={styles.sectionTitle}>
+                      {selectedCategory === 'All' ? 'Video Sermons' : selectedCategory}
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {filteredVideoSermons.length} {filteredVideoSermons.length === 1 ? 'sermon' : 'sermons'} found
+                    </Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.sectionSearchButton}
+                    onPress={() => setShowSearchInterface(!showSearchInterface)}
+                    activeOpacity={0.7}>
+                    <Search size={18} color="#c9a961" strokeWidth={2} />
+                  </TouchableOpacity>
+                </View>
               </View>
               
               {filteredVideoSermons.length === 0 ? (
-            <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No video sermons found</Text>
-              <Text style={styles.emptySubtext}>
-                {searchQuery ? 'Try adjusting your search terms' : 'Check back later for new content'}
-              </Text>
-            </View>
-          ) : (
-                filteredVideoSermons.map((sermon) => (
-              <TouchableOpacity 
-                key={sermon.id} 
-                style={styles.sermonCard}
-                    onPress={() => handleSermonPress(sermon)}>
-                <ImageBackground
-                  source={{ uri: sermon.thumbnail }}
-                  style={styles.sermonImage}
-                  imageStyle={styles.sermonImageStyle}>
-                  <LinearGradient
-                    colors={['rgba(15,15,15,0)', 'rgba(15,15,15,0.95)']}
-                    style={styles.sermonGradient}>
-                    <View style={styles.playIconContainer}>
-                      <Play size={20} color="#ffffff" fill="#ffffff" />
-                    </View>
-                  </LinearGradient>
-                </ImageBackground>
-                <View style={styles.sermonInfo}>
-                  <Text style={styles.sermonCategory}>Sunday Service</Text>
-                  <Text style={styles.sermonTitle} numberOfLines={2}>{sermon.title}</Text>
-                  <Text style={styles.sermonPastor}>{sermon.channelTitle}</Text>
-                  <Text style={styles.sermonDescription} numberOfLines={2}>
-                    {sermon.description}
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>
+                    {sermons.length === 0 ? 'No video is available at the moment' : 'No video sermons found'}
                   </Text>
-                  <View style={styles.sermonMeta}>
-                    <View style={styles.metaItem}>
-                      <Clock size={14} color="#666666" strokeWidth={2} />
-                      <Text style={styles.metaText}>{sermon.duration}</Text>
-                    </View>
-                    <Text style={styles.metaDivider}>•</Text>
-                    <Text style={styles.metaText}>
-                      {formatSermonDate(sermon.publishedAt)}
-                    </Text>
-                    <Text style={styles.metaDivider}>•</Text>
-                    <Text style={styles.metaText}>{sermon.viewCount} views</Text>
-                    <TouchableOpacity 
-                      style={styles.downloadButton}
-                      onPress={() => handleVideoDownload(sermon)}>
-                      <Download size={16} color="#c9a961" strokeWidth={2} />
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={styles.emptySubtext}>
+                    {sermons.length === 0 
+                      ? 'Check back later for new content' 
+                      : searchQuery 
+                        ? 'Try adjusting your search terms' 
+                        : 'Check back later for new content'
+                    }
+                  </Text>
                 </View>
-              </TouchableOpacity>
-            ))
+              ) : (
+                <View style={styles.videoSermonsContainer}>
+                  {/* Group sermons by category */}
+                  {getVideoSermonsByCategory().map((categoryGroup) => (
+                    <View key={categoryGroup.category} style={styles.videoCategorySection}>
+                      <View style={styles.videoCategoryHeader}>
+                        <Text style={styles.videoCategoryTitle}>{categoryGroup.category}</Text>
+                        <Text style={styles.videoCategoryCount}>
+                          {categoryGroup.sermons.length} {categoryGroup.sermons.length === 1 ? 'sermon' : 'sermons'}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.videoSermonsGrid}>
+                        {categoryGroup.sermons.map((sermon) => (
+                          <TouchableOpacity 
+                            key={sermon.id} 
+                            style={styles.videoSermonCard}
+                            onPress={() => handleSermonPress(sermon)}
+                            activeOpacity={0.8}>
+                            
+                            {/* Video Thumbnail */}
+                            <View style={styles.videoThumbnailContainer}>
+                              <ImageBackground
+                                source={{ uri: sermon.thumbnail }}
+                                style={styles.videoThumbnail}
+                                imageStyle={styles.videoThumbnailStyle}>
+                                <LinearGradient
+                                  colors={['rgba(15,15,15,0)', 'rgba(15,15,15,0.7)']}
+                                  style={styles.videoGradient}>
+                                  <View style={styles.videoPlayButton}>
+                                    <Play size={24} color="#ffffff" fill="#ffffff" />
+                                  </View>
+                                  <View style={styles.videoDuration}>
+                                    <Text style={styles.videoDurationText}>{sermon.duration}</Text>
+                                  </View>
+                                </LinearGradient>
+                              </ImageBackground>
+                            </View>
+                            
+                            {/* Video Info */}
+                            <View style={styles.videoInfo}>
+                              <Text style={styles.videoTitle} numberOfLines={2}>
+                                {sermon.title}
+                              </Text>
+                              <Text style={styles.videoChannel} numberOfLines={1}>
+                                {sermon.channelTitle}
+                              </Text>
+                              
+                              {/* Video Meta */}
+                              <View style={styles.videoMeta}>
+                                <View style={styles.videoMetaItem}>
+                                  <Clock size={12} color="#c9a961" strokeWidth={2} />
+                                  <Text style={styles.videoMetaText}>
+                                    {formatSermonDate(sermon.publishedAt)}
+                                  </Text>
+                                </View>
+                                <Text style={styles.videoMetaDivider}>•</Text>
+                                <Text style={styles.videoMetaText}>
+                                  {sermon.viewCount} views
+                                </Text>
+                              </View>
+                            </View>
+                            
+                            {/* Action Buttons */}
+                            <View style={styles.videoActions}>
+                              <TouchableOpacity 
+                                style={styles.videoDownloadButton}
+                                onPress={() => handleVideoDownload(sermon)}>
+                                <Download size={16} color="#c9a961" strokeWidth={2} />
+                              </TouchableOpacity>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+                </View>
               )}
             </>
           )}
@@ -1359,50 +1530,63 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  header: {
-    paddingTop: 60,
+  // Modern Header Styles
+  modernHeader: {
+    paddingTop: 45,
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 12,
   },
-  headerTitle: {
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  modernHeaderTitle: {
     fontFamily: 'Playfair-Bold',
-    fontSize: 32,
+    fontSize: 26,
     color: '#ffffff',
-    marginBottom: 8,
   },
-  headerSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 12,
-  },
-  channelInfo: {
+  channelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    backgroundColor: 'rgba(201, 169, 97, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 97, 0.3)',
+    gap: 4,
   },
-  channelText: {
+  channelBadgeText: {
     fontFamily: 'Inter-Medium',
-    fontSize: 13,
+    fontSize: 11,
     color: '#c9a961',
+  },
+  modernHeaderSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#999999',
   },
   tabContainer: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 8,
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
-    padding: 4,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    gap: 4,
   },
   activeTab: {
     backgroundColor: '#c9a961',
@@ -1415,22 +1599,23 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#ffffff',
   },
-  filtersSection: {
+  searchInterface: {
     backgroundColor: '#0f0f0f',
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#2a2a2a',
-    gap: 12,
+    gap: 8,
+    minHeight: 48,
   },
   searchInput: {
     flex: 1,
@@ -1439,22 +1624,22 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   categoriesWrapper: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   categoriesContent: {
     paddingHorizontal: 20,
-    gap: 12,
+    gap: 6,
   },
   categoryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#2a2a2a',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 44,
+    minHeight: 40,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1489,15 +1674,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
   },
   sermonsContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 100, // Extra space for global player
   },
   sectionHeader: {
-    marginBottom: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 2,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
     borderBottomColor: '#2a2a2a',
+  },
+  sectionHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  sectionHeaderLeft: {
+    flex: 1,
+  },
+  sectionSearchButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(201, 169, 97, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 97, 0.3)',
+    marginLeft: 12,
   },
   sectionTitle: {
     fontFamily: 'Inter-Bold',
@@ -1512,12 +1716,18 @@ const styles = StyleSheet.create({
     color: '#999999',
     letterSpacing: 0.3,
   },
-  // Podcast Series Styles
-  podcastSeriesCard: {
+  // Modern Series Grid Styles
+  seriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+  seriesTile: {
+    width: '48%',
     backgroundColor: '#1a1a1a',
-    borderRadius: 20,
-    marginBottom: 24,
-    marginHorizontal: 4,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#2a2a2a',
     shadowColor: '#000',
@@ -1525,85 +1735,88 @@ const styles = StyleSheet.create({
       width: 0,
       height: 6,
     },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 12,
+    elevation: 8,
     overflow: 'hidden',
+    marginBottom: 12,
   },
-  podcastSeriesCover: {
+  seriesTileLeft: {
+    marginRight: 4,
+  },
+  seriesTileRight: {
+    marginLeft: 4,
+  },
+  seriesTileThumbnail: {
     width: '100%',
-    height: 220,
+    height: 160,
+    position: 'relative',
   },
-  podcastSeriesCoverStyle: {
+  seriesTileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  seriesTileImageStyle: {
     resizeMode: 'cover',
   },
-  podcastSeriesGradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  seriesTileContent: {
+    padding: 14,
+    paddingTop: 12,
   },
-  podcastPlayIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  podcastSeriesInfo: {
-    padding: 24,
-    paddingTop: 20,
-  },
-  podcastSeriesCategory: {
+  seriesTileCategory: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 11,
+    fontSize: 10,
     color: '#c9a961',
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  podcastSeriesTitle: {
+  seriesTileTitle: {
     fontFamily: 'Inter-Bold',
-    fontSize: 20,
+    fontSize: 16,
     color: '#ffffff',
-    marginBottom: 8,
-    lineHeight: 28,
+    marginBottom: 6,
+    lineHeight: 22,
   },
-  podcastSeriesSpeaker: {
+  seriesTileSpeaker: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: 12,
     color: '#c9a961',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  podcastSeriesDescription: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#999999',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  podcastSeriesMeta: {
+  seriesTileMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  podcastEpisodeCount: {
+  seriesTileEpisodeCount: {
     fontFamily: 'Inter-SemiBold',
-    fontSize: 13,
+    fontSize: 11,
     color: '#ffffff',
   },
-  podcastSeriesTap: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 13,
-    color: '#666666',
+  newBanner: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#dc2626',
+  },
+  newBannerText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   
   // Series Header Styles
   seriesHeader: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   backButton: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   backButtonText: {
     fontFamily: 'Inter-Medium',
@@ -1613,16 +1826,16 @@ const styles = StyleSheet.create({
   seriesInfo: {
     flexDirection: 'row',
     backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#c9a961',
   },
   seriesCover: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-    marginRight: 16,
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    marginRight: 14,
   },
   seriesCoverStyle: {
     resizeMode: 'cover',
@@ -1661,10 +1874,346 @@ const styles = StyleSheet.create({
     color: '#c9a961',
   },
   
-  // Episodes List Styles
+  // Modern Episodes List Styles
   episodesList: {
+    gap: 8,
+  },
+  episodeListItem: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  episodeListBanner: {
+    width: 20,
+    backgroundColor: '#c9a961',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  episodeListBannerText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    transform: [{ rotate: '-90deg' }],
+  },
+  episodeListContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    flex: 1,
+  },
+  episodeListNumber: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#c9a961',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  episodeListNumberText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: '#000000',
+    fontWeight: 'bold',
+  },
+  episodeListInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  episodeListTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: '#ffffff',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  episodeListSpeaker: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 13,
+    color: '#c9a961',
+    marginBottom: 8,
+  },
+  episodeListMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  episodeListMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  episodeListMetaText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#999999',
+  },
+  episodeListMetaDivider: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#666666',
+  },
+  episodeListActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 16,
+    paddingVertical: 16,
+  },
+  episodeListDownloadButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(201, 169, 97, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 97, 0.3)',
+  },
+  episodeListPlayButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#c9a961',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#c9a961',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  episodeListPlayButtonActive: {
+    backgroundColor: '#b89a4a',
+    transform: [{ scale: 1.05 }],
+  },
+  episodeListProgress: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  episodeListProgressBar: {
+    height: 3,
+    backgroundColor: '#333333',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  episodeListProgressFill: {
+    height: '100%',
+    backgroundColor: '#c9a961',
+    borderRadius: 2,
+  },
+  episodeListProgressText: {
+    fontSize: 11,
+    color: '#c9a961',
+    textAlign: 'center',
+    fontFamily: 'Inter-Medium',
+  },
+  
+  // Modern Podcast Grid Styles
+  episodesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
     gap: 12,
-    alignItems: 'flex-end',
+  },
+  episodeGridCard: {
+    width: '48%',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  episodeGridCardLeft: {
+    marginRight: 6,
+  },
+  episodeGridCardRight: {
+    marginLeft: 6,
+  },
+  episodeNumberBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#c9a961',
+    borderRadius: 8,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#c9a961',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  episodeNumberText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: 'bold',
+  },
+  episodeThumbnail: {
+    width: '100%',
+    height: 80,
+    position: 'relative',
+  },
+  episodeThumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  episodeThumbnailImageStyle: {
+    resizeMode: 'cover',
+  },
+  episodeThumbnailGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  episodePlayIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(201, 169, 97, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#c9a961',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  episodeGridContent: {
+    padding: 8,
+    paddingTop: 6,
+  },
+  episodeGridTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 13,
+    color: '#ffffff',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  episodeGridSpeaker: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 10,
+    color: '#c9a961',
+    marginBottom: 6,
+  },
+  episodeGridMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 4,
+  },
+  episodeGridMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  episodeGridMetaText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 9,
+    color: '#999999',
+  },
+  episodeGridMetaDivider: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 9,
+    color: '#666666',
+  },
+  episodeGridActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  episodeGridDownloadButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(201, 169, 97, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 97, 0.3)',
+  },
+  episodeGridPlayButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#c9a961',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#c9a961',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  episodeGridPlayButtonActive: {
+    backgroundColor: '#b89a4a',
+    transform: [{ scale: 1.05 }],
+  },
+  episodeGridProgress: {
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingBottom: 6,
+  },
+  episodeGridProgressBar: {
+    height: 2,
+    backgroundColor: '#333333',
+    borderRadius: 1,
+    overflow: 'hidden',
+    marginBottom: 3,
+  },
+  episodeGridProgressFill: {
+    height: '100%',
+    backgroundColor: '#c9a961',
+    borderRadius: 1,
+  },
+  episodeGridProgressText: {
+    fontSize: 8,
+    color: '#c9a961',
+    textAlign: 'center',
+    fontFamily: 'Inter-Medium',
   },
   episodeCard: {
     backgroundColor: '#1a1a1a',
@@ -1727,11 +2276,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-  episodeNumberText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 14,
-    color: '#ffffff',
   },
   episodeDetails: {
     flex: 1,
@@ -2106,5 +2650,151 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     letterSpacing: 0.3,
+  },
+  
+  // Modern Video Sermons Container Styles
+  videoSermonsContainer: {
+    gap: 24,
+  },
+  videoCategorySection: {
+    marginBottom: 24,
+  },
+  videoCategoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  videoCategoryTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: '#ffffff',
+  },
+  videoCategoryCount: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#c9a961',
+  },
+  videoSermonsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  videoSermonCard: {
+    width: '48%',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  videoThumbnailContainer: {
+    position: 'relative',
+  },
+  videoThumbnail: {
+    width: '100%',
+    height: 120,
+  },
+  videoThumbnailStyle: {
+    resizeMode: 'cover',
+  },
+  videoGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  videoPlayButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(201, 169, 97, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  videoDuration: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  videoDurationText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 11,
+    color: '#ffffff',
+  },
+  videoInfo: {
+    padding: 12,
+    flex: 1,
+  },
+  videoTitle: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 14,
+    color: '#ffffff',
+    marginBottom: 6,
+    lineHeight: 18,
+  },
+  videoChannel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: '#c9a961',
+    marginBottom: 8,
+  },
+  videoMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  videoMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  videoMetaText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: '#999999',
+  },
+  videoMetaDivider: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    color: '#666666',
+  },
+  videoActions: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  videoDownloadButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(201, 169, 97, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 97, 0.4)',
   },
 });
