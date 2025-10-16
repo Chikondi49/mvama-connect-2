@@ -1,9 +1,9 @@
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Clock, Download, Headphones, Pause, Play, Search, SkipBack, SkipForward, Users, Video } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Clock, Download, Headphones, Pause, Play, Search, SkipBack, SkipForward, Users, Video, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { audioSermonService } from '../../services/audioSermonService';
 import { downloadService } from '../../services/downloadService';
@@ -191,6 +191,7 @@ export default function SermonsScreen() {
   const [duration, setDuration] = useState(0);
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const [isPlayerMinimized, setIsPlayerMinimized] = useState(false);
+  const [playerAnimation] = useState(new Animated.Value(1));
   const [showGlobalPlayer, setShowGlobalPlayer] = useState(false);
   const [currentPlayingSeries, setCurrentPlayingSeries] = useState<string | null>(null);
   const [showSearchInterface, setShowSearchInterface] = useState(false);
@@ -573,7 +574,7 @@ export default function SermonsScreen() {
       setIsPlaying(true);
       setCurrentPlayingSeries(selectedSeries?.id || null);
       setShowGlobalPlayer(true);
-      setIsPlayerMinimized(false);
+      setIsPlayerMinimized(false); // Start with wave player as primary
 
       // Parse duration correctly
       const episodeDuration = parseDurationToSeconds(episode.duration);
@@ -777,11 +778,33 @@ export default function SermonsScreen() {
   };
 
   const minimizePlayer = () => {
-    setIsPlayerMinimized(true);
+    Animated.timing(playerAnimation, {
+      toValue: 0.8,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsPlayerMinimized(true);
+      Animated.timing(playerAnimation, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
   };
 
   const expandPlayer = () => {
-    setIsPlayerMinimized(false);
+    Animated.timing(playerAnimation, {
+      toValue: 1.1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsPlayerMinimized(false);
+      Animated.timing(playerAnimation, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
   };
 
   const stopAudio = async () => {
@@ -803,7 +826,7 @@ export default function SermonsScreen() {
     if (!showGlobalPlayer || !currentEpisode) return null;
 
     return (
-      <View style={styles.globalPlayerContainer}>
+      <Animated.View style={[styles.globalPlayerContainer, { transform: [{ scale: playerAnimation }] }]}>
         <View style={styles.globalPlayerContent}>
           <View style={styles.globalPlayerInfo}>
             <Text style={styles.globalPlayerTitle} numberOfLines={1}>
@@ -840,19 +863,21 @@ export default function SermonsScreen() {
           
           <View style={styles.globalPlayerActions}>
             <TouchableOpacity 
-              style={styles.globalActionButton} 
-              onPress={isPlayerMinimized ? expandPlayer : minimizePlayer}>
+              style={[styles.globalActionButton, styles.minimizeButton]} 
+              onPress={isPlayerMinimized ? expandPlayer : minimizePlayer}
+              activeOpacity={0.7}>
               {isPlayerMinimized ? (
-                <Text style={styles.globalActionText}>↑</Text>
+                <ChevronUp size={16} color="#c9a961" strokeWidth={2} />
               ) : (
-                <Text style={styles.globalActionText}>↓</Text>
+                <ChevronDown size={16} color="#c9a961" strokeWidth={2} />
               )}
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={styles.globalActionButton} 
-              onPress={stopAudio}>
-              <Text style={styles.globalActionText}>✕</Text>
+              style={[styles.globalActionButton, styles.closeButton]} 
+              onPress={stopAudio}
+              activeOpacity={0.7}>
+              <X size={16} color="#ff6b6b" strokeWidth={2} />
             </TouchableOpacity>
           </View>
         </View>
@@ -872,15 +897,33 @@ export default function SermonsScreen() {
             </View>
           </View>
         )}
-      </View>
+        
+        {/* Minimized state indicator */}
+        {isPlayerMinimized && (
+          <View style={styles.minimizedIndicator}>
+            <View style={styles.minimizedProgressBar}>
+              <View 
+                style={[
+                  styles.minimizedProgressFill, 
+                  { width: `${(currentTime / duration) * 100}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.minimizedTimeText}>
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </Text>
+          </View>
+        )}
+      </Animated.View>
     );
   };
 
   // Waveform Component
   const WaveformComponent = ({ data, progress, onSeek }: { data: number[], progress: number, onSeek: (position: number) => void }) => {
     const width = 300;
-    const height = 24;
+    const height = 32;
     const barWidth = width / data.length;
+    const progressRatio = duration > 0 ? progress / duration : 0;
     
     const handlePress = (event: any) => {
       const { locationX } = event.nativeEvent;
@@ -908,27 +951,39 @@ export default function SermonsScreen() {
       <TouchableOpacity onPress={handlePress} style={styles.waveformContainer}>
         <Svg width={width} height={height}>
           {data.map((amplitude, index) => {
-            const barHeight = amplitude * height;
+            const barHeight = Math.max(2, amplitude * height * 0.8);
             const x = index * barWidth;
             const y = (height - barHeight) / 2;
-            const isPlayed = (index / data.length) < (progress / duration);
+            const isPlayed = (index / data.length) < progressRatio;
+            const isCurrent = Math.abs((index / data.length) - progressRatio) < 0.01;
             
             return (
               <Path
                 key={index}
                 d={`M${x} ${y} L${x} ${y + barHeight}`}
-                stroke={isPlayed ? '#c9a961' : '#333333'}
-                strokeWidth={1}
+                stroke={isCurrent ? '#ffffff' : isPlayed ? '#c9a961' : '#444444'}
+                strokeWidth={isCurrent ? 2 : 1.5}
                 strokeLinecap="round"
+                opacity={isPlayed ? 1 : 0.6}
               />
             );
           })}
-          {/* Progress indicator */}
+          {/* Enhanced Progress indicator */}
           <Circle
-            cx={(progress / duration) * width}
+            cx={progressRatio * width}
             cy={height / 2}
-            r={3}
+            r={4}
             fill="#c9a961"
+            stroke="#ffffff"
+            strokeWidth={2}
+            opacity={0.9}
+          />
+          {/* Progress line */}
+          <Path
+            d={`M${progressRatio * width} ${0} L${progressRatio * width} ${height}`}
+            stroke="#c9a961"
+            strokeWidth={1}
+            opacity={0.3}
           />
         </Svg>
       </TouchableOpacity>
@@ -1127,7 +1182,7 @@ export default function SermonsScreen() {
           <View style={styles.channelBadge}>
             <Users size={14} color="#c9a961" strokeWidth={2} />
             <Text style={styles.channelBadgeText}>Rev. Yassin Gammah</Text>
-          </View>
+        </View>
         </View>
         <Text style={styles.modernHeaderSubtitle}>Messages from MVAMA CCAP Nkhoma Synod</Text>
       </View>
@@ -1156,41 +1211,41 @@ export default function SermonsScreen() {
       {!selectedSeries && showSearchInterface && (
         <View style={styles.searchInterface}>
           {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <Search size={20} color="#666666" strokeWidth={2} />
-            <TextInput
-              style={styles.searchInput}
+      <View style={styles.searchContainer}>
+        <Search size={20} color="#666666" strokeWidth={2} />
+        <TextInput
+          style={styles.searchInput}
               placeholder={`Search ${activeTab} sermons...`}
-              placeholderTextColor="#666666"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
+          placeholderTextColor="#666666"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
 
           {/* Category Filters */}
           <View style={styles.categoriesWrapper}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoriesContent}>
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.categoryButton,
-                    selectedCategory === category && styles.categoryButtonActive,
-                  ]}
-                  onPress={() => setSelectedCategory(category)}>
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      selectedCategory === category && styles.categoryTextActive,
-                    ]}>
-                    {category}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoriesContent}>
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category}
+            style={[
+              styles.categoryButton,
+              selectedCategory === category && styles.categoryButtonActive,
+            ]}
+            onPress={() => setSelectedCategory(category)}>
+            <Text
+              style={[
+                styles.categoryText,
+                selectedCategory === category && styles.categoryTextActive,
+              ]}>
+              {category}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
           </View>
         </View>
       )}
@@ -1249,13 +1304,13 @@ export default function SermonsScreen() {
                         {/* Vertical Episode Banner */}
                         <View style={styles.episodeListBanner}>
                           <Text style={styles.episodeListBannerText}>EPISODE</Text>
-                        </View>
+                          </View>
                         
                         <View style={styles.episodeListContent}>
                           {/* Episode Number */}
                           <View style={styles.episodeListNumber}>
                             <Text style={styles.episodeListNumberText}>{episode.episodeNumber}</Text>
-                          </View>
+                              </View>
                           
                           {/* Episode Info */}
                           <View style={styles.episodeListInfo}>
@@ -1282,38 +1337,38 @@ export default function SermonsScreen() {
                         
                         {/* Action Buttons - Moved to end */}
                         <View style={styles.episodeListActions}>
-                          <TouchableOpacity 
+                              <TouchableOpacity 
                             style={styles.episodeListDownloadButton}
-                            onPress={() => downloadAudio(episode)}>
-                            <Download size={16} color="#c9a961" strokeWidth={2} />
-                          </TouchableOpacity>
+                                onPress={() => downloadAudio(episode)}>
+                                <Download size={16} color="#c9a961" strokeWidth={2} />
+                              </TouchableOpacity>
                           
-                          <TouchableOpacity 
-                            style={[
+                            <TouchableOpacity 
+                              style={[
                               styles.episodeListPlayButton,
                               playingAudio === episode.id && isPlaying && styles.episodeListPlayButtonActive
-                            ]}
+                              ]}
                             onPress={() => playAudio(episode)}>
-                            {playingAudio === episode.id && isPlaying ? (
+                              {playingAudio === episode.id && isPlaying ? (
                               <Pause size={20} color="#ffffff" fill="#ffffff" />
-                            ) : (
+                              ) : (
                               <Play size={20} color="#ffffff" fill="#ffffff" />
-                            )}
-                          </TouchableOpacity>
+                              )}
+                            </TouchableOpacity>
                         </View>
                         
-                        {/* Audio Progress Indicator */}
-                        {playingAudio === episode.id && currentEpisode && (
-                          <View style={styles.episodeListProgress}>
-                            <View style={styles.episodeListProgressBar}>
+                        {/* Simple Audio Progress - Only show when wave player is minimized */}
+                        {playingAudio === episode.id && currentEpisode && isPlayerMinimized && (
+                          <View style={styles.simpleEpisodePlayer}>
+                            <View style={styles.simpleProgressBar}>
                               <View 
                                 style={[
-                                  styles.episodeListProgressFill, 
+                                  styles.simpleProgressFill, 
                                   { width: `${(currentTime / duration) * 100}%` }
                                 ]} 
                               />
                             </View>
-                            <Text style={styles.episodeListProgressText}>
+                            <Text style={styles.simpleProgressText}>
                               {formatTime(currentTime)} / {formatTime(duration)}
                             </Text>
                           </View>
@@ -1328,12 +1383,12 @@ export default function SermonsScreen() {
                   <View style={styles.sectionHeader}>
                     <View style={styles.sectionHeaderTop}>
                       <View style={styles.sectionHeaderLeft}>
-                        <Text style={styles.sectionTitle}>
-                          {selectedCategory === 'All' ? 'Podcast Series' : selectedCategory}
-                        </Text>
-                        <Text style={styles.sectionSubtitle}>
-                          {filteredPodcastSeries.length} {filteredPodcastSeries.length === 1 ? 'series' : 'series'} found
-                        </Text>
+                    <Text style={styles.sectionTitle}>
+                      {selectedCategory === 'All' ? 'Podcast Series' : selectedCategory}
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {filteredPodcastSeries.length} {filteredPodcastSeries.length === 1 ? 'series' : 'series'} found
+                    </Text>
                       </View>
                       <TouchableOpacity 
                         style={styles.sectionSearchButton}
@@ -1354,22 +1409,19 @@ export default function SermonsScreen() {
           ) : (
                     <View style={styles.seriesGrid}>
                       {(forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).map((series, index) => (
-                        <TouchableOpacity 
-                          key={series.id} 
-                          style={[
-                            styles.seriesTile,
-                            index % 2 === 0 ? styles.seriesTileLeft : styles.seriesTileRight
-                          ]}
+                      <TouchableOpacity 
+                        key={series.id} 
+                          style={styles.seriesTile}
                           onPress={() => openSeries(series)}
                           activeOpacity={0.8}>
                           
                           {/* Series Thumbnail */}
                           <View style={styles.seriesTileThumbnail}>
-                            <ImageBackground
-                              source={{ uri: series.coverImage }}
+                        <ImageBackground
+                          source={{ uri: series.coverImage }}
                               style={styles.seriesTileImage}
                               imageStyle={styles.seriesTileImageStyle}>
-                            </ImageBackground>
+                        </ImageBackground>
                             
                             {/* NEW Banner for recent episodes */}
                             {hasRecentEpisodes(series) && (
@@ -1384,7 +1436,7 @@ export default function SermonsScreen() {
                             <Text style={styles.seriesTileCategory}>{series.category}</Text>
                             <Text style={styles.seriesTileTitle} numberOfLines={2}>
                               {series.title}
-                            </Text>
+                          </Text>
                             <Text style={styles.seriesTileSpeaker} numberOfLines={1}>
                               {series.speaker}
                             </Text>
@@ -1394,9 +1446,9 @@ export default function SermonsScreen() {
                               <Text style={styles.seriesTileEpisodeCount}>
                                 {series.totalEpisodes} episodes
                               </Text>
-                            </View>
                           </View>
-                        </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
                       ))}
                     </View>
                   )}
@@ -1409,12 +1461,12 @@ export default function SermonsScreen() {
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderTop}>
                   <View style={styles.sectionHeaderLeft}>
-                    <Text style={styles.sectionTitle}>
-                      {selectedCategory === 'All' ? 'Video Sermons' : selectedCategory}
-                    </Text>
-                    <Text style={styles.sectionSubtitle}>
-                      {filteredVideoSermons.length} {filteredVideoSermons.length === 1 ? 'sermon' : 'sermons'} found
-                    </Text>
+                <Text style={styles.sectionTitle}>
+                  {selectedCategory === 'All' ? 'Video Sermons' : selectedCategory}
+                </Text>
+                <Text style={styles.sectionSubtitle}>
+                  {filteredVideoSermons.length} {filteredVideoSermons.length === 1 ? 'sermon' : 'sermons'} found
+                </Text>
                   </View>
                   <TouchableOpacity 
                     style={styles.sectionSearchButton}
@@ -1426,20 +1478,20 @@ export default function SermonsScreen() {
               </View>
               
               {filteredVideoSermons.length === 0 ? (
-                <View style={styles.emptyContainer}>
+            <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
                     {sermons.length === 0 ? 'No video is available at the moment' : 'No video sermons found'}
                   </Text>
-                  <Text style={styles.emptySubtext}>
+              <Text style={styles.emptySubtext}>
                     {sermons.length === 0 
                       ? 'Check back later for new content' 
                       : searchQuery 
                         ? 'Try adjusting your search terms' 
                         : 'Check back later for new content'
                     }
-                  </Text>
-                </View>
-              ) : (
+              </Text>
+            </View>
+          ) : (
                 <View style={styles.videoSermonsContainer}>
                   {/* Group sermons by category */}
                   {getVideoSermonsByCategory().map((categoryGroup) => (
@@ -1453,19 +1505,19 @@ export default function SermonsScreen() {
                       
                       <View style={styles.videoSermonsGrid}>
                         {categoryGroup.sermons.map((sermon) => (
-                          <TouchableOpacity 
-                            key={sermon.id} 
+              <TouchableOpacity 
+                key={sermon.id} 
                             style={styles.videoSermonCard}
                             onPress={() => handleSermonPress(sermon)}
                             activeOpacity={0.8}>
                             
                             {/* Video Thumbnail */}
                             <View style={styles.videoThumbnailContainer}>
-                              <ImageBackground
-                                source={{ uri: sermon.thumbnail }}
+                <ImageBackground
+                  source={{ uri: sermon.thumbnail }}
                                 style={styles.videoThumbnail}
                                 imageStyle={styles.videoThumbnailStyle}>
-                                <LinearGradient
+                  <LinearGradient
                                   colors={['rgba(15,15,15,0)', 'rgba(15,15,15,0.7)']}
                                   style={styles.videoGradient}>
                                   <View style={styles.videoPlayButton}>
@@ -1473,10 +1525,10 @@ export default function SermonsScreen() {
                                   </View>
                                   <View style={styles.videoDuration}>
                                     <Text style={styles.videoDurationText}>{sermon.duration}</Text>
-                                  </View>
-                                </LinearGradient>
-                              </ImageBackground>
-                            </View>
+                    </View>
+                  </LinearGradient>
+                </ImageBackground>
+                    </View>
                             
                             {/* Video Info */}
                             <View style={styles.videoInfo}>
@@ -1492,8 +1544,8 @@ export default function SermonsScreen() {
                                 <View style={styles.videoMetaItem}>
                                   <Clock size={12} color="#c9a961" strokeWidth={2} />
                                   <Text style={styles.videoMetaText}>
-                                    {formatSermonDate(sermon.publishedAt)}
-                                  </Text>
+                      {formatSermonDate(sermon.publishedAt)}
+                    </Text>
                                 </View>
                                 <Text style={styles.videoMetaDivider}>•</Text>
                                 <Text style={styles.videoMetaText}>
@@ -1504,13 +1556,13 @@ export default function SermonsScreen() {
                             
                             {/* Action Buttons */}
                             <View style={styles.videoActions}>
-                              <TouchableOpacity 
+                    <TouchableOpacity 
                                 style={styles.videoDownloadButton}
-                                onPress={() => handleVideoDownload(sermon)}>
-                                <Download size={16} color="#c9a961" strokeWidth={2} />
-                              </TouchableOpacity>
-                            </View>
-                          </TouchableOpacity>
+                      onPress={() => handleVideoDownload(sermon)}>
+                      <Download size={16} color="#c9a961" strokeWidth={2} />
+                    </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
                         ))}
                       </View>
                     </View>
@@ -1721,11 +1773,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
     gap: 8,
   },
   seriesTile: {
     width: '48%',
+    minWidth: '48%',
+    maxWidth: '48%',
+    flexBasis: '48%',
     backgroundColor: '#1a1a1a',
     borderRadius: 16,
     borderWidth: 1,
@@ -1740,12 +1795,6 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
     marginBottom: 12,
-  },
-  seriesTileLeft: {
-    marginRight: 4,
-  },
-  seriesTileRight: {
-    marginLeft: 4,
   },
   seriesTileThumbnail: {
     width: '100%',
@@ -2796,5 +2845,71 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(201, 169, 97, 0.4)',
+  },
+  
+  // Simple Episode Player Styles
+  simpleEpisodePlayer: {
+    marginTop: 8,
+    marginHorizontal: -16, // Extend to full width of episode card
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(201, 169, 97, 0.1)',
+  },
+  simpleProgressBar: {
+    height: 4,
+    backgroundColor: 'rgba(201, 169, 97, 0.2)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  simpleProgressFill: {
+    height: '100%',
+    backgroundColor: '#c9a961',
+    borderRadius: 2,
+  },
+  simpleProgressText: {
+    fontSize: 11,
+    color: '#c9a961',
+    textAlign: 'center',
+    fontFamily: 'Inter-Medium',
+  },
+  
+  // Enhanced Action Button Styles
+  minimizeButton: {
+    backgroundColor: 'rgba(201, 169, 97, 0.15)',
+    borderColor: 'rgba(201, 169, 97, 0.3)',
+  },
+  closeButton: {
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  
+  // Minimized State Styles
+  minimizedIndicator: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(201, 169, 97, 0.05)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(201, 169, 97, 0.1)',
+  },
+  minimizedProgressBar: {
+    height: 2,
+    backgroundColor: 'rgba(201, 169, 97, 0.2)',
+    borderRadius: 1,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  minimizedProgressFill: {
+    height: '100%',
+    backgroundColor: '#c9a961',
+    borderRadius: 1,
+  },
+  minimizedTimeText: {
+    fontSize: 10,
+    color: '#c9a961',
+    textAlign: 'center',
+    fontFamily: 'Inter-Medium',
   },
 });

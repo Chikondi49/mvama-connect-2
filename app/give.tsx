@@ -43,8 +43,21 @@ export default function GiveScreen() {
       
       console.log(`✅ Loaded ${options.length} giving options and ${methods.length} payment methods`);
       console.log('📊 Payment methods:', methods);
+      
+      // If no payment methods from Firebase, use fallback
+      if (methods.length === 0) {
+        console.log('⚠️ No payment methods from Firebase, using fallback');
+        const fallbackMethods = [
+          { id: '1', name: 'Bank Transfer', type: 'bank', icon: 'Banknote', isActive: true, order: 1 },
+          { id: '2', name: 'Airtel Money', type: 'airtel', icon: 'Smartphone', isActive: true, order: 2 },
+          { id: '3', name: 'TNM Mpamba', type: 'tnm', icon: 'Smartphone', isActive: true, order: 3 },
+        ];
+        setPaymentMethods(fallbackMethods);
+      } else {
+        setPaymentMethods(methods);
+      }
+      
       setGivingOptions(options);
-      setPaymentMethods(methods);
     } catch (error) {
       console.error('❌ Error loading giving data:', error);
       // Fallback to default data if Firebase fails
@@ -57,7 +70,7 @@ export default function GiveScreen() {
       ]);
       const fallbackMethods = [
         { id: '1', name: 'Bank Transfer', type: 'bank', icon: 'Banknote', isActive: true, order: 1 },
-        { id: '2', name: 'Airtel Money 2', type: 'airtel', icon: 'Smartphone', isActive: true, order: 2 },
+        { id: '2', name: 'Airtel Money', type: 'airtel', icon: 'Smartphone', isActive: true, order: 2 },
         { id: '3', name: 'TNM Mpamba', type: 'tnm', icon: 'Smartphone', isActive: true, order: 3 },
       ];
       console.log('📊 Using fallback payment methods:', fallbackMethods);
@@ -68,6 +81,14 @@ export default function GiveScreen() {
   };
 
   useEffect(() => {
+    // Initialize with fallback payment methods immediately
+    const initialPaymentMethods = [
+      { id: '1', name: 'Bank Transfer', type: 'bank', icon: 'Banknote', isActive: true, order: 1 },
+      { id: '2', name: 'Airtel Money', type: 'airtel', icon: 'Smartphone', isActive: true, order: 2 },
+      { id: '3', name: 'TNM Mpamba', type: 'tnm', icon: 'Smartphone', isActive: true, order: 3 },
+    ];
+    setPaymentMethods(initialPaymentMethods);
+    
     loadGivingData();
   }, []);
 
@@ -171,6 +192,13 @@ export default function GiveScreen() {
         {/* Payment Methods */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment Method</Text>
+          
+          {/* Debug info */}
+          {__DEV__ && (
+            <Text style={styles.debugText}>
+              Debug: {paymentMethods.length} payment methods loaded
+            </Text>
+          )}
           
           {paymentMethods.length > 0 ? paymentMethods.map((method) => (
             <TouchableOpacity
@@ -442,5 +470,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: '#666666',
+  },
+  debugText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#c9a961',
+    marginBottom: 8,
   },
 });

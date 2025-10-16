@@ -169,6 +169,11 @@ export default function SignUpScreen() {
       }, 1500);
     } catch (error: any) {
       console.error('❌ Sign up failed:', error);
+      console.error('❌ Error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       
       // Handle specific Firebase auth errors
       let errorMessage = 'Unable to Sign-Up!';
@@ -181,9 +186,15 @@ export default function SignUpScreen() {
         errorMessage = 'Password is too weak. Please choose a stronger password';
       } else if (error.code === 'auth/operation-not-allowed') {
         errorMessage = 'Email/password accounts are not enabled';
+      } else if (error.code === 'permission-denied') {
+        errorMessage = 'Permission denied. Please check your Firebase configuration';
+      } else if (error.code === 'unavailable') {
+        errorMessage = 'Service temporarily unavailable. Please try again';
       } else if (error.message) {
         errorMessage = error.message;
       }
+      
+      console.log('🚨 Showing error to user:', errorMessage);
       
       // Show error notification
       setNotification({
@@ -212,9 +223,9 @@ export default function SignUpScreen() {
         type={notification.type}
         onHide={hideNotification}
       />
-      <LinearGradient
+        <LinearGradient
         colors={['#0f0f0f', '#1a1a1a']}
-        style={styles.gradient}>
+          style={styles.gradient}>
           
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

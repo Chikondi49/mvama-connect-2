@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mvama.connect"
+      "bundleIdentifier": "com.mvama.connect",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera to take photos for news articles.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select images for news articles."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +30,10 @@
       "versionCode": 1,
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -36,7 +43,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them.",
+          "cameraPermission": "The app accesses your camera to let you take photos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,5 +1,5 @@
 // Giving Service for Firebase Firestore
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export interface GivingOption {
@@ -7,7 +7,9 @@ export interface GivingOption {
   amount: string; // "2,000", "5,000", "10,000", "20,000", "50,000"
   isPopular: boolean; // true for MK20,000
   isBigButton: boolean; // true for MK20,000
+  isActive: boolean; // whether the option is active
   order: number; // for sorting
+  description?: string; // optional description
 }
 
 export interface PaymentMethod {
@@ -211,6 +213,188 @@ class GivingService {
     } catch (error) {
       console.error('❌ Error fetching user transactions:', error);
       return [];
+    }
+  }
+
+  // Create a new giving option
+  async createGivingOption(optionData: Omit<GivingOption, 'id'>): Promise<string> {
+    try {
+      console.log('💰 Creating new giving option:', optionData.amount);
+      
+      const docRef = await addDoc(collection(db, this.COLLECTIONS.GIVING_OPTIONS), optionData);
+      console.log(`✅ Giving option created with ID: ${docRef.id}`);
+      return docRef.id;
+    } catch (error) {
+      console.error('❌ Error creating giving option:', error);
+      throw error;
+    }
+  }
+
+  // Update an existing giving option
+  async updateGivingOption(optionId: string, updateData: Partial<GivingOption>): Promise<void> {
+    try {
+      console.log('💰 Updating giving option:', optionId);
+      console.log('💰 Update data:', updateData);
+      
+      const optionRef = doc(db, this.COLLECTIONS.GIVING_OPTIONS, optionId);
+      
+      // Check if document exists
+      const docSnap = await getDoc(optionRef);
+      if (!docSnap.exists()) {
+        throw new Error('Giving option not found');
+      }
+      
+      await updateDoc(optionRef, updateData);
+      console.log(`✅ Giving option updated: ${optionId}`);
+    } catch (error) {
+      console.error('❌ Error updating giving option:', error);
+      throw error;
+    }
+  }
+
+  // Delete a giving option
+  async deleteGivingOption(optionId: string): Promise<void> {
+    try {
+      console.log('💰 Deleting giving option:', optionId);
+      
+      const optionRef = doc(db, this.COLLECTIONS.GIVING_OPTIONS, optionId);
+      await deleteDoc(optionRef);
+      console.log(`✅ Giving option deleted: ${optionId}`);
+    } catch (error) {
+      console.error('❌ Error deleting giving option:', error);
+      throw error;
+    }
+  }
+
+  // Create a new payment method
+  async createPaymentMethod(methodData: Omit<PaymentMethod, 'id'>): Promise<string> {
+    try {
+      console.log('💳 Creating new payment method:', methodData.name);
+      console.log('💳 Full method data:', methodData);
+      console.log('💳 Collection:', this.COLLECTIONS.PAYMENT_METHODS);
+      console.log('💳 Firebase db object:', db);
+      
+      // Test Firebase connection
+      if (!db) {
+        throw new Error('Firebase database not initialized');
+      }
+      
+      const docRef = await addDoc(collection(db, this.COLLECTIONS.PAYMENT_METHODS), methodData);
+      console.log(`✅ Payment method created with ID: ${docRef.id}`);
+      return docRef.id;
+    } catch (error) {
+      console.error('❌ Error creating payment method:', error);
+      console.error('❌ Error details:', error);
+      console.error('❌ Error stack:', (error as any)?.stack);
+      throw error;
+    }
+  }
+
+  // Update an existing payment method
+  async updatePaymentMethod(methodId: string, updateData: Partial<PaymentMethod>): Promise<void> {
+    try {
+      console.log('💳 Updating payment method:', methodId);
+      console.log('💳 Update data:', updateData);
+      
+      const methodRef = doc(db, this.COLLECTIONS.PAYMENT_METHODS, methodId);
+      
+      // Check if document exists
+      const docSnap = await getDoc(methodRef);
+      if (!docSnap.exists()) {
+        throw new Error('Payment method not found');
+      }
+      
+      await updateDoc(methodRef, updateData);
+      console.log(`✅ Payment method updated: ${methodId}`);
+    } catch (error) {
+      console.error('❌ Error updating payment method:', error);
+      throw error;
+    }
+  }
+
+  // Delete a payment method
+  async deletePaymentMethod(methodId: string): Promise<void> {
+    try {
+      console.log('💳 Deleting payment method:', methodId);
+      
+      const methodRef = doc(db, this.COLLECTIONS.PAYMENT_METHODS, methodId);
+      await deleteDoc(methodRef);
+      console.log(`✅ Payment method deleted: ${methodId}`);
+    } catch (error) {
+      console.error('❌ Error deleting payment method:', error);
+      throw error;
+    }
+  }
+
+  // Bank Transfer Details CRUD
+  async createBankTransferDetails(details: Partial<BankTransferDetails>): Promise<string> {
+    try {
+      console.log('🏦 Creating bank transfer details:', details);
+      
+      const docRef = await addDoc(collection(db, this.COLLECTIONS.BANK_DETAILS), details);
+      console.log(`✅ Bank transfer details created with ID: ${docRef.id}`);
+      return docRef.id;
+    } catch (error) {
+      console.error('❌ Error creating bank transfer details:', error);
+      throw error;
+    }
+  }
+
+  async updateBankTransferDetails(details: Partial<BankTransferDetails>): Promise<void> {
+    try {
+      console.log('🏦 Updating bank transfer details:', details);
+      
+      const bankRef = doc(db, this.COLLECTIONS.BANK_DETAILS, 'main');
+      
+      // Check if document exists
+      const docSnap = await getDoc(bankRef);
+      if (!docSnap.exists()) {
+        // Create new document if it doesn't exist
+        await addDoc(collection(db, this.COLLECTIONS.BANK_DETAILS), details);
+        console.log('✅ Bank transfer details created');
+      } else {
+        await updateDoc(bankRef, details);
+        console.log('✅ Bank transfer details updated');
+      }
+    } catch (error) {
+      console.error('❌ Error updating bank transfer details:', error);
+      throw error;
+    }
+  }
+
+  // Mobile Money Details CRUD
+  async createMobileMoneyDetails(type: 'airtel' | 'tnm', details: Partial<MobileMoneyDetails>): Promise<string> {
+    try {
+      console.log(`📱 Creating ${type} mobile money details:`, details);
+      
+      const docRef = await addDoc(collection(db, this.COLLECTIONS.MOBILE_MONEY_DETAILS), { type, ...details });
+      console.log(`✅ ${type} mobile money details created with ID: ${docRef.id}`);
+      return docRef.id;
+    } catch (error) {
+      console.error(`❌ Error creating ${type} mobile money details:`, error);
+      throw error;
+    }
+  }
+
+  async updateMobileMoneyDetails(type: 'airtel' | 'tnm', details: Partial<MobileMoneyDetails>): Promise<void> {
+    try {
+      console.log(`📱 Updating ${type} mobile money details:`, details);
+      
+      const mobileRef = doc(db, this.COLLECTIONS.MOBILE_MONEY_DETAILS, type);
+      
+      // Check if document exists
+      const docSnap = await getDoc(mobileRef);
+      if (!docSnap.exists()) {
+        // Create new document if it doesn't exist
+        await addDoc(collection(db, this.COLLECTIONS.MOBILE_MONEY_DETAILS), { type, ...details });
+        console.log(`✅ ${type} mobile money details created`);
+      } else {
+        await updateDoc(mobileRef, details);
+        console.log(`✅ ${type} mobile money details updated`);
+      }
+    } catch (error) {
+      console.error(`❌ Error updating ${type} mobile money details:`, error);
+      throw error;
     }
   }
 }

@@ -1,12 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, ChevronRight, Globe, Search, Star } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ImageBackground, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BibleBook, BibleChapter, BibleSearchResult, bibleService, BibleTranslation } from '../../services/bibleService';
 
 export default function BibleScreen() {
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<number>(1);
+  const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<BibleSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -18,11 +19,50 @@ export default function BibleScreen() {
   const [loading, setLoading] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [showTranslations, setShowTranslations] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const mainScrollViewRef = useRef<ScrollView>(null);
+  const [versePositions, setVersePositions] = useState<{[key: number]: number}>({});
 
   // Load Bible data
   useEffect(() => {
     loadBibleData();
   }, []);
+
+  // Scroll to selected verse when it changes
+  useEffect(() => {
+    if (selectedVerse && currentChapter && mainScrollViewRef.current) {
+      const verseIndex = currentChapter.verses.findIndex(v => v.verseNumber === selectedVerse);
+      if (verseIndex !== -1) {
+        console.log(`📖 Scrolling to verse ${selectedVerse} (index: ${verseIndex})`);
+        
+        // Use measured position if available, otherwise use fallback
+        const measuredPosition = versePositions[selectedVerse];
+        const fallbackPosition = verseIndex * 120; // Fallback calculation
+        const targetY = measuredPosition !== undefined ? measuredPosition : fallbackPosition;
+        
+        console.log(`📖 Measured position: ${measuredPosition}, Fallback: ${fallbackPosition}, Using: ${targetY}`);
+        
+        // Robust scrolling with multiple attempts
+        setTimeout(() => {
+          console.log(`📖 Attempt 1: Direct scroll to ${targetY}`);
+          mainScrollViewRef.current?.scrollTo({
+            y: targetY,
+            animated: false
+          });
+        }, 100);
+        
+        // Backup attempt with slight adjustment
+        setTimeout(() => {
+          const adjustedY = targetY - 20; // Slight offset to ensure verse is at top
+          console.log(`📖 Attempt 2: Adjusted scroll to ${adjustedY}`);
+          mainScrollViewRef.current?.scrollTo({
+            y: Math.max(0, adjustedY),
+            animated: false
+          });
+        }, 500);
+      }
+    }
+  }, [selectedVerse, currentChapter, versePositions]);
 
   const loadBibleData = async () => {
     try {
@@ -58,6 +98,42 @@ export default function BibleScreen() {
     setIsSearching(true);
     try {
       console.log(`🔍 Searching for: "${searchQuery}"`);
+      
+      // First, try to parse as verse reference
+      const parsed = parseVerseReference(searchQuery);
+      
+      if (parsed) {
+        console.log(`📖 Detected verse reference: ${parsed.bookName} ${parsed.chapter}:${parsed.verse}`);
+        
+        // Find the book
+        const book = bibleBooks.find(b => 
+          b.name.toLowerCase().includes(parsed.bookName) ||
+          b.id.toLowerCase() === parsed.bookName.toLowerCase()
+        );
+        
+        if (book) {
+          console.log(`📖 Found book: ${book.name} (${book.id})`);
+          
+          // Load the chapter
+          setSelectedBook(book.id);
+          setSelectedChapter(parsed.chapter);
+          setSelectedVerse(parsed.verse);
+          setSearchQuery('');
+          setShowSearch(false);
+          
+          // Load chapter data
+          const chapterData = await bibleService.getChapter(selectedTranslation, book.id, parsed.chapter);
+          setCurrentChapter(chapterData);
+          
+          console.log(`✅ Loaded ${book.name} ${parsed.chapter}:${parsed.verse}`);
+          return;
+        } else {
+          Alert.alert('Book Not Found', `Could not find book: ${parsed.bookName}`);
+          return;
+        }
+      }
+      
+      // If not a verse reference, perform text search
       const results = await bibleService.searchVerses(searchQuery, selectedTranslation, 20);
       setSearchResults(results);
       setShowSearch(true);
@@ -69,10 +145,72 @@ export default function BibleScreen() {
     }
   };
 
+  // Book name mappings for short forms
+  const bookNameMappings: {[key: string]: string} = {
+    // Old Testament
+    'gen': 'genesis', 'exo': 'exodus', 'lev': 'leviticus', 'num': 'numbers', 'deu': 'deuteronomy',
+    'jos': 'joshua', 'judg': 'judges', 'rut': 'ruth', '1sa': '1 samuel', '2sa': '2 samuel',
+    '1ki': '1 kings', '2ki': '2 kings', '1ch': '1 chronicles', '2ch': '2 chronicles',
+    '1chro': '1 chronicles', '2chro': '2 chronicles', 'chro': 'chronicles',
+    'ezr': 'ezra', 'neh': 'nehemiah', 'est': 'esther', 'job': 'job', 'psa': 'psalms',
+    'ps': 'psalms', 'pro': 'proverbs', 'ecc': 'ecclesiastes', 'sos': 'song of solomon',
+    'isa': 'isaiah', 'jer': 'jeremiah', 'lam': 'lamentations', 'eze': 'ezekiel',
+    'dan': 'daniel', 'hos': 'hosea', 'joe': 'joel', 'amo': 'amos', 'oba': 'obadiah',
+    'jon': 'jonah', 'mic': 'micah', 'nah': 'nahum', 'hab': 'habakkuk', 'zep': 'zephaniah',
+    'hag': 'haggai', 'zec': 'zechariah', 'mal': 'malachi',
+    
+    // New Testament
+    'mat': 'matthew', 'mar': 'mark', 'luk': 'luke', 'joh': 'john', 'act': 'acts',
+    'rom': 'romans', '1co': '1 corinthians', '2co': '2 corinthians', 'gal': 'galatians',
+    'eph': 'ephesians', 'phi': 'philippians', 'col': 'colossians', '1th': '1 thessalonians',
+    '2th': '2 thessalonians', '1ti': '1 timothy', '2ti': '2 timothy', 'tit': 'titus',
+    'phm': 'philemon', 'heb': 'hebrews', 'jam': 'james', '1pe': '1 peter', '2pe': '2 peter',
+    '1jo': '1 john', '2jo': '2 john', '3jo': '3 john', 'jud': 'jude', 'rev': 'revelation'
+  };
+
+  const parseVerseReference = (query: string) => {
+    // Clean the query
+    const cleanQuery = query.trim().toLowerCase();
+    console.log(`📖 Parsing verse reference: "${cleanQuery}"`);
+    
+    // Extract book name (everything before the first number)
+    const bookMatch = cleanQuery.match(/^([a-z\s]+?)(\d+)/);
+    if (!bookMatch) {
+      console.log('❌ No book name found');
+      return null;
+    }
+    
+    let bookName = bookMatch[1].trim();
+    const chapterVerse = bookMatch[2] + cleanQuery.substring(bookMatch[0].length);
+    
+    // Handle short forms
+    if (bookNameMappings[bookName]) {
+      bookName = bookNameMappings[bookName];
+      console.log(`📖 Mapped "${bookMatch[1]}" to "${bookName}"`);
+    }
+    
+    // Extract chapter and verse numbers - handle any symbol between them
+    const chapterVerseMatch = chapterVerse.match(/(\d+)[-=';:.,/\\[\]*]+(\d+)/);
+    if (!chapterVerseMatch) {
+      console.log('❌ No chapter/verse found');
+      return null;
+    }
+    
+    const chapter = parseInt(chapterVerseMatch[1]);
+    const verse = parseInt(chapterVerseMatch[2]);
+    
+    console.log(`📖 Parsed: Book="${bookName}", Chapter=${chapter}, Verse=${verse}`);
+    
+    return { bookName, chapter, verse };
+  };
+
+
   const handleChapterSelect = async (chapter: number) => {
     if (!selectedBook) return;
     
     setSelectedChapter(chapter);
+    setSelectedVerse(null); // Reset verse selection when changing chapters
+    setVersePositions({}); // Reset verse positions for new chapter
     try {
       console.log(`📖 Loading chapter: ${selectedBook} ${chapter}`);
       const chapterData = await bibleService.getChapter(selectedTranslation, selectedBook, chapter);
@@ -80,6 +218,24 @@ export default function BibleScreen() {
     } catch (error) {
       console.error('❌ Error loading chapter:', error);
       Alert.alert('Error', 'Failed to load chapter. Please try again.');
+    }
+  };
+
+  const handleVerseSelect = (verseNumber: number) => {
+    console.log(`📖 Verse ${verseNumber} selected`);
+    setSelectedVerse(verseNumber);
+    
+    // If we have the position measured, scroll immediately
+    if (versePositions[verseNumber] !== undefined) {
+      console.log(`📖 Using measured position: ${versePositions[verseNumber]}`);
+      setTimeout(() => {
+        mainScrollViewRef.current?.scrollTo({
+          y: versePositions[verseNumber],
+          animated: false
+        });
+      }, 100);
+    } else {
+      console.log(`📖 Position not yet measured, will scroll when measured`);
     }
   };
 
@@ -204,28 +360,90 @@ export default function BibleScreen() {
     return (
       <View style={styles.chapterContentContainer}>
         <View style={styles.chapterContentHeader}>
-          <TouchableOpacity style={styles.backButton} onPress={() => setCurrentChapter(null)}>
+          <TouchableOpacity style={styles.backButton} onPress={() => selectedVerse ? setSelectedVerse(null) : setCurrentChapter(null)}>
             <ArrowLeft size={20} color="#c9a961" strokeWidth={2} />
-            <Text style={styles.backButtonText}>Back to Chapters</Text>
+            <Text style={styles.backButtonText}>
+              {selectedVerse ? 'Back to Verse Selection' : 'Back to Chapters'}
+            </Text>
           </TouchableOpacity>
-          <View style={styles.chapterInfo}>
-            <Text style={styles.chapterTitle}>
-              {bibleBooks.find(b => b.id === selectedBook)?.name} Chapter {currentChapter.chapterNumber}
-            </Text>
-            <Text style={styles.chapterSubtitle}>
-              {currentChapter.verses.length} verses • {getCurrentTranslation()?.name}
-            </Text>
-          </View>
+          
+          {/* Verse Selector Grid - Only show if no verse selected */}
+          {!selectedVerse && (
+            <View style={styles.verseSelector}>
+              <Text style={styles.verseSelectorLabel}>
+                Select Verse: Choose a verse
+              </Text>
+              <View style={styles.verseGrid}>
+                {Array.from({ 
+                  length: Math.min(currentChapter.verses.length, 50) // Limit to 50 verses for better UX
+                }, (_, i) => i + 1).map((verseNum) => (
+                  <TouchableOpacity
+                    key={verseNum}
+                    style={[
+                      styles.verseGridCard,
+                      selectedVerse === verseNum && styles.selectedVerseCard
+                    ]}
+                    onPress={() => handleVerseSelect(verseNum)}>
+                    <Text style={[
+                      styles.verseGridNumber,
+                      selectedVerse === verseNum && styles.selectedVerseGridNumber
+                    ]}>
+                      {verseNum}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {currentChapter.verses.length > 50 && (
+                  <View style={styles.moreVersesIndicator}>
+                    <Text style={styles.moreVersesText}>
+                      +{currentChapter.verses.length - 50} more verses
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
-        <ScrollView style={styles.versesContainer} showsVerticalScrollIndicator={false}>
-          {currentChapter.verses.map((verse, index) => (
-            <View key={index} style={styles.verseContainer}>
-              <Text style={styles.verseNumber}>{verse.verseNumber}</Text>
-              <Text style={styles.verseText}>{verse.text}</Text>
+        {selectedVerse ? (
+          <View style={styles.chapterContentContainer}>
+
+            <View style={styles.versesContainer}>
+              {currentChapter.verses.map((verse, index) => (
+                <TouchableOpacity 
+                  key={index} 
+                  style={[
+                    styles.verseContainer,
+                    selectedVerse === verse.verseNumber && styles.selectedVerseContainer
+                  ]}
+                  onPress={() => handleVerseSelect(verse.verseNumber)}
+                  onLayout={(event) => {
+                    const { y, height } = event.nativeEvent.layout;
+                    console.log(`📖 Verse ${verse.verseNumber} layout: y=${y}, height=${height}`);
+                    
+                    // Store the position for precise scrolling
+                    setVersePositions(prev => ({
+                      ...prev,
+                      [verse.verseNumber]: y
+                    }));
+                  }}
+                  activeOpacity={0.7}>
+                  <Text style={[
+                    styles.verseNumber,
+                    selectedVerse === verse.verseNumber && styles.selectedVerseNumber
+                  ]}>
+                    {verse.verseNumber}
+                  </Text>
+                  <Text style={[
+                    styles.verseText,
+                    selectedVerse === verse.verseNumber && styles.selectedVerseText
+                  ]}>
+                    {verse.text}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          ))}
-        </ScrollView>
+          </View>
+        ) : null}
       </View>
     );
   };
@@ -289,11 +507,16 @@ export default function BibleScreen() {
           style={styles.gradient}>
           
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.headerTitle}>Bible</Text>
-              <Text style={styles.headerSubtitle}>{getCurrentTranslation()?.name}</Text>
-            </View>
+           <View style={styles.header}>
+             <View style={styles.headerLeft}>
+               <Text style={styles.headerTitle}>Bible</Text>
+               <Text style={styles.headerSubtitle}>{getCurrentTranslation()?.name}</Text>
+               {selectedBook && currentChapter && selectedVerse && (
+                 <Text style={styles.headerSubtitle}>
+                   {bibleBooks.find(b => b.id === selectedBook)?.name} {currentChapter.chapterNumber}
+                 </Text>
+               )}
+             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity 
                 style={styles.headerButton}
@@ -308,7 +531,10 @@ export default function BibleScreen() {
             </View>
           </View>
 
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            ref={mainScrollViewRef}
+            style={styles.content} 
+            showsVerticalScrollIndicator={false}>
 
             {/* Search Interface */}
             {showSearch && (
@@ -317,7 +543,7 @@ export default function BibleScreen() {
                   <Search size={20} color="#666666" strokeWidth={2} />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Search Bible verses..."
+                    placeholder="Search verses or enter reference (e.g., John 3:16, Lev 1.2, Ps 23-1)"
                     placeholderTextColor="#666666"
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -336,6 +562,7 @@ export default function BibleScreen() {
                 </View>
               </View>
             )}
+
 
             {/* Translation Selector */}
             {showTranslations && (
@@ -559,30 +786,32 @@ const styles = StyleSheet.create({
   chaptersGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 12,
   },
   chapterCard: {
-    width: '18%',
-    aspectRatio: 1,
+    width: 50,
+    height: 50,
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#2a2a2a',
+    marginBottom: 8,
   },
   selectedChapterCard: {
     backgroundColor: '#c9a961',
     borderColor: '#c9a961',
   },
   chapterNumber: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
     color: '#ffffff',
   },
   selectedChapterNumber: {
     color: '#000000',
+    fontSize: 20,
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -716,8 +945,8 @@ const styles = StyleSheet.create({
   },
   verseContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
-    paddingBottom: 16,
+    marginBottom: 6,
+    paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#2a2a2a',
   },
@@ -732,7 +961,145 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: '#ffffff',
-    lineHeight: 24,
+    lineHeight: 22,
     flex: 1,
+  },
+  selectedVerseContainer: {
+    backgroundColor: 'rgba(201, 169, 97, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#c9a961',
+    marginBottom: 16,
+    paddingBottom: 16,
+  },
+  selectedVerseNumber: {
+    color: '#c9a961',
+    fontSize: 18,
+  },
+  selectedVerseText: {
+    color: '#ffffff',
+    fontFamily: 'Inter-Regular',
+  },
+  verseSelector: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  verseSelectorLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#cccccc',
+    marginBottom: 12,
+  },
+  verseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: 8,
+  },
+  verseGridCard: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  selectedVerseCard: {
+    backgroundColor: '#c9a961',
+    borderColor: '#c9a961',
+  },
+  verseGridNumber: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: '#ffffff',
+  },
+  selectedVerseGridNumber: {
+    color: '#000000',
+    fontSize: 20,
+  },
+  moreVersesIndicator: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderStyle: 'dashed',
+  },
+  moreVersesText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 8,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 10,
+  },
+  selectedVerseDisplay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  centeredVerseContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#c9a961',
+    alignItems: 'center',
+    maxWidth: '100%',
+  },
+  centeredVerseNumber: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: '#c9a961',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  centeredVerseText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 18,
+    color: '#ffffff',
+    lineHeight: 28,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  clearSelectionButton: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+  },
+  clearSelectionText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#cccccc',
+  },
+  noVerseSelected: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  noVerseSelectedText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  versesScrollContent: {
+    paddingBottom: 100, // Extra padding at bottom for better scrolling
   },
 });

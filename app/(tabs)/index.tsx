@@ -105,6 +105,8 @@ export default function HomeScreen() {
       router.push('/give');
     } else if (action === 'Connect') {
       router.push('/connect');
+    } else if (action === 'Bible') {
+      router.push('/bible');
     } else {
       console.log(`${action} action pressed`);
     }
@@ -825,6 +827,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     color: '#c9a961',
+    textAlign: 'right',
   },
   rotationIndicator: {
     marginTop: 8,

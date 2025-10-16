@@ -69,6 +69,9 @@ export default function LoginScreen() {
     try {
       setIsLoading(true);
       console.log('🔐 Attempting to sign in user:', email.trim());
+      console.log('🔐 Password length:', password.length);
+      console.log('🔐 Auth context loading:', loading);
+      
       await signIn(email.trim(), password);
       console.log('✅ Login successful - user authenticated with Firebase');
       
@@ -218,6 +221,7 @@ export default function LoginScreen() {
                     <Text style={styles.signUpLink}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
+
 
               </View>
         </View>

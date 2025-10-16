@@ -18,6 +18,9 @@ export interface UserProfile {
   photoURL?: string;
   createdAt: string;
   lastLoginAt: string;
+  role: 'user' | 'admin' | 'super_admin';
+  permissions?: string[];
+  isActive: boolean;
 }
 
 export class AuthService {
@@ -94,12 +97,18 @@ export class AuthService {
         displayName: displayName,
         photoURL: user.photoURL || undefined,
         createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString()
+        lastLoginAt: new Date().toISOString(),
+        role: 'user',
+        isActive: true
       };
 
+      console.log('📝 Creating user profile in Firestore...');
+      console.log('📝 User profile data:', userProfile);
+      
       await setDoc(doc(db, 'users', user.uid), userProfile);
       
       console.log('✅ User account created successfully');
+      console.log('✅ User profile saved to Firestore');
       return user;
     } catch (error: any) {
       console.error('❌ Sign up error:', error);
@@ -140,6 +149,12 @@ export class AuthService {
       if (!auth) {
         throw new Error('Firebase auth is not initialized. Please check your Firebase configuration.');
       }
+      
+      // Clear current user immediately
+      this.currentUser = null;
+      
+      // Notify all listeners that user is now null
+      this.authStateListeners.forEach(listener => listener(null));
       
       await firebaseSignOut(auth);
       console.log('✅ User signed out successfully');

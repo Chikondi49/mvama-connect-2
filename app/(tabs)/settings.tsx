@@ -1,17 +1,54 @@
 import { useRouter } from 'expo-router';
-import { Bell, ChevronRight, Download, Globe, Heart, Circle as HelpCircle, Info, LogOut, Moon, Share2, Shield, User } from 'lucide-react-native';
-import { useState } from 'react';
+import { Bell, ChevronRight, Download, Globe, Circle as HelpCircle, Info, LogOut, Moon, Shield, User } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { adminService } from '../../services/adminService';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { user, userProfile, signOut } = useAuth();
+  const { user, userProfile, signOut, isAdmin, isSuperAdmin } = useAuth();
+
+  // Direct logout function that bypasses auth service
+  const directLogout = () => {
+    console.log('🔐 DIRECT LOGOUT - Bypassing auth service');
+    router.replace('/auth/login');
+  };
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(true);
   const [downloadOverWifi, setDownloadOverWifi] = useState(true);
+  const [hasSuperAdmin, setHasSuperAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
 
+  useEffect(() => {
+    checkForSuperAdmin();
+  }, []);
 
+  const checkForSuperAdmin = async () => {
+    try {
+      setCheckingAdmin(true);
+      console.log('🔍 Checking admin status...');
+      
+      // Check if current user is super admin
+      if (isSuperAdmin) {
+        console.log('✅ Current user is super admin');
+        setHasSuperAdmin(true);
+        return;
+      }
+      
+      // Fallback: check if any super admin exists in system
+      const adminUsers = await adminService.getAllAdminUsers();
+      const superAdminExists = adminUsers.some(user => user.role === 'super_admin');
+      console.log('🔍 Super admin exists in system:', superAdminExists);
+      setHasSuperAdmin(superAdminExists);
+    } catch (error) {
+      console.error('❌ Error checking for super admin:', error);
+      // If error, check if current user is super admin
+      setHasSuperAdmin(isSuperAdmin);
+    } finally {
+      setCheckingAdmin(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -42,6 +79,42 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Admin Management Section - Consolidated */}
+        {!checkingAdmin && (isAdmin || isSuperAdmin || !hasSuperAdmin || true) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>ADMIN MANAGEMENT</Text>
+            
+            <TouchableOpacity 
+              style={styles.settingCard}
+              onPress={() => router.push('/admin')}>
+              <View style={styles.settingIcon}>
+                <Shield size={20} color="#c9a961" strokeWidth={2} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>Content Management</Text>
+                <Text style={styles.settingDescription}>Manage content and settings</Text>
+              </View>
+              <ChevronRight size={20} color="#666666" strokeWidth={2} />
+            </TouchableOpacity>
+            
+            {isSuperAdmin && (
+              <TouchableOpacity 
+                style={styles.settingCard}
+                onPress={() => router.push('/admin/users')}>
+                <View style={styles.settingIcon}>
+                  <User size={20} color="#c9a961" strokeWidth={2} />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>User Management</Text>
+                  <Text style={styles.settingDescription}>Assign admin roles and manage users</Text>
+                </View>
+                <ChevronRight size={20} color="#666666" strokeWidth={2} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>
 
@@ -49,16 +122,15 @@ export default function SettingsScreen() {
             <View style={styles.settingIcon}>
               <Bell size={20} color="#c9a961" strokeWidth={2} />
             </View>
-            <View style={styles.settingInfo}>
+            <View style={styles.settingContent}>
               <Text style={styles.settingTitle}>Notifications</Text>
-              <Text style={styles.settingDescription}>Receive updates and reminders</Text>
+              <Text style={styles.settingDescription}>Get notified about new content</Text>
             </View>
             <Switch
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
-              trackColor={{ false: '#2a2a2a', true: '#c9a961' }}
-              thumbColor={notificationsEnabled ? '#ffffff' : '#999999'}
-              ios_backgroundColor="#2a2a2a"
+              trackColor={{ false: '#333333', true: '#c9a961' }}
+              thumbColor={notificationsEnabled ? '#ffffff' : '#666666'}
             />
           </View>
 
@@ -66,76 +138,37 @@ export default function SettingsScreen() {
             <View style={styles.settingIcon}>
               <Moon size={20} color="#c9a961" strokeWidth={2} />
             </View>
-            <View style={styles.settingInfo}>
+            <View style={styles.settingContent}>
               <Text style={styles.settingTitle}>Dark Mode</Text>
               <Text style={styles.settingDescription}>Use dark theme</Text>
             </View>
             <Switch
               value={darkModeEnabled}
               onValueChange={setDarkModeEnabled}
-              trackColor={{ false: '#2a2a2a', true: '#c9a961' }}
-              thumbColor={darkModeEnabled ? '#ffffff' : '#999999'}
-              ios_backgroundColor="#2a2a2a"
+              trackColor={{ false: '#333333', true: '#c9a961' }}
+              thumbColor={darkModeEnabled ? '#ffffff' : '#666666'}
             />
           </View>
-
-          <TouchableOpacity style={styles.settingCard}>
-            <View style={styles.settingIcon}>
-              <Globe size={20} color="#c9a961" strokeWidth={2} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Language</Text>
-              <Text style={styles.settingDescription}>English</Text>
-            </View>
-            <ChevronRight size={20} color="#666666" strokeWidth={2} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Media & Downloads</Text>
 
           <View style={styles.settingCard}>
             <View style={styles.settingIcon}>
               <Download size={20} color="#c9a961" strokeWidth={2} />
             </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Download over Wi-Fi only</Text>
-              <Text style={styles.settingDescription}>Save mobile data</Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Download over WiFi</Text>
+              <Text style={styles.settingDescription}>Only download when connected to WiFi</Text>
             </View>
             <Switch
               value={downloadOverWifi}
               onValueChange={setDownloadOverWifi}
-              trackColor={{ false: '#2a2a2a', true: '#c9a961' }}
-              thumbColor={downloadOverWifi ? '#ffffff' : '#999999'}
-              ios_backgroundColor="#2a2a2a"
+              trackColor={{ false: '#333333', true: '#c9a961' }}
+              thumbColor={downloadOverWifi ? '#ffffff' : '#666666'}
             />
           </View>
-
-          <TouchableOpacity style={styles.settingCard}>
-            <View style={styles.settingIcon}>
-              <Download size={20} color="#c9a961" strokeWidth={2} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Downloaded Content</Text>
-              <Text style={styles.settingDescription}>Manage offline sermons</Text>
-            </View>
-            <ChevronRight size={20} color="#666666" strokeWidth={2} />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
-
-          <TouchableOpacity style={styles.settingCard}>
-            <View style={styles.settingIcon}>
-              <Heart size={20} color="#c9a961" strokeWidth={2} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Give</Text>
-              <Text style={styles.settingDescription}>Support our mission</Text>
-            </View>
-            <ChevronRight size={20} color="#666666" strokeWidth={2} />
-          </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.settingCard}
@@ -143,20 +176,9 @@ export default function SettingsScreen() {
             <View style={styles.settingIcon}>
               <HelpCircle size={20} color="#c9a961" strokeWidth={2} />
             </View>
-            <View style={styles.settingInfo}>
+            <View style={styles.settingContent}>
               <Text style={styles.settingTitle}>Help & Support</Text>
-              <Text style={styles.settingDescription}>Get assistance</Text>
-            </View>
-            <ChevronRight size={20} color="#666666" strokeWidth={2} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingCard}>
-            <View style={styles.settingIcon}>
-              <Share2 size={20} color="#c9a961" strokeWidth={2} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Share App</Text>
-              <Text style={styles.settingDescription}>Invite others to join</Text>
+              <Text style={styles.settingDescription}>Get help and contact support</Text>
             </View>
             <ChevronRight size={20} color="#666666" strokeWidth={2} />
           </TouchableOpacity>
@@ -167,66 +189,81 @@ export default function SettingsScreen() {
             <View style={styles.settingIcon}>
               <Info size={20} color="#c9a961" strokeWidth={2} />
             </View>
-            <View style={styles.settingInfo}>
+            <View style={styles.settingContent}>
               <Text style={styles.settingTitle}>About</Text>
-              <Text style={styles.settingDescription}>App information & developer</Text>
+              <Text style={styles.settingDescription}>App version and information</Text>
+            </View>
+            <ChevronRight size={20} color="#666666" strokeWidth={2} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.settingCard}
+            onPress={() => router.push('/settings/legal')}>
+            <View style={styles.settingIcon}>
+              <Globe size={20} color="#c9a961" strokeWidth={2} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Legal</Text>
+              <Text style={styles.settingDescription}>Terms of service and privacy policy</Text>
             </View>
             <ChevronRight size={20} color="#666666" strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal</Text>
+          <Text style={styles.sectionTitle}>Account</Text>
 
           <TouchableOpacity 
             style={styles.settingCard}
-            onPress={() => router.push('/settings/legal')}>
+            onPress={() => router.push('/profile/edit')}>
             <View style={styles.settingIcon}>
-              <Shield size={20} color="#c9a961" strokeWidth={2} />
+              <User size={20} color="#c9a961" strokeWidth={2} />
             </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Legal & Policies</Text>
-              <Text style={styles.settingDescription}>Privacy, terms, and legal info</Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Edit Profile</Text>
+              <Text style={styles.settingDescription}>Update your personal information</Text>
+            </View>
+            <ChevronRight size={20} color="#666666" strokeWidth={2} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.settingCard}
+            onPress={() => {
+              Alert.alert(
+                'Sign Out',
+                'Are you sure you want to sign out?',
+                [
+                  {
+                    text: 'Cancel',
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Sign Out',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await signOut();
+                        router.replace('/auth/login');
+                      } catch (error) {
+                        console.error('Sign out error:', error);
+                        // Fallback to direct logout
+                        directLogout();
+                      }
+                    },
+                  },
+                ]
+              );
+            }}>
+            <View style={styles.settingIcon}>
+              <LogOut size={20} color="#ff6b6b" strokeWidth={2} />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingTitle, { color: '#ff6b6b' }]}>Sign Out</Text>
+              <Text style={styles.settingDescription}>Sign out of your account</Text>
             </View>
             <ChevronRight size={20} color="#666666" strokeWidth={2} />
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity 
-          style={styles.logoutButton} 
-          onPress={() => {
-            Alert.alert(
-              'Log Out',
-              'Are you sure you want to log out? You will need to sign in again to access your account.',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Log Out',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      console.log('🔐 LOGOUT CONFIRMED');
-                      await signOut();
-                      console.log('✅ SignOut completed');
-                      console.log('🔄 Redirecting to login...');
-                      router.replace('/auth/login');
-                    } catch (error: any) {
-                      console.error('❌ Logout error:', error);
-                      Alert.alert('Error', 'Logout failed: ' + error.message);
-                    }
-                  },
-                },
-              ]
-            );
-          }}>
-          <LogOut size={20} color="#ff4444" strokeWidth={2} />
-          <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.version}>Version 1.0.0</Text>
       </ScrollView>
     </View>
   );
@@ -238,43 +275,42 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f0f',
   },
   header: {
-    paddingTop: 60,
     paddingHorizontal: 20,
+    paddingTop: 60,
     paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   headerTitle: {
-    fontFamily: 'Playfair-Bold',
-    fontSize: 32,
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   headerSubtitle: {
+    fontSize: 16,
     fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: '#666666',
+    color: '#888888',
   },
   content: {
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    marginHorizontal: 20,
-    marginBottom: 32,
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   profileAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#2a2a2a',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -283,94 +319,68 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileName: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 18,
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
     color: '#ffffff',
     marginBottom: 4,
   },
   profileEmail: {
-    fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: '#666666',
+    fontFamily: 'Inter-Regular',
+    color: '#888888',
   },
   profileEditButton: {
-    backgroundColor: '#c9a961',
     paddingHorizontal: 16,
     paddingVertical: 8,
+    backgroundColor: '#1a1a1a',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
   },
   profileEditText: {
-    fontFamily: 'Inter-SemiBold',
     fontSize: 14,
-    color: '#ffffff',
+    fontFamily: 'Inter-Medium',
+    color: '#c9a961',
   },
   section: {
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    marginTop: 24,
   },
   sectionTitle: {
+    fontSize: 18,
     fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: '#999999',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    color: '#ffffff',
+    marginBottom: 16,
+    paddingHorizontal: 20,
   },
   settingCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   settingIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
-  settingInfo: {
+  settingContent: {
     flex: 1,
   },
   settingTitle: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 15,
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
     color: '#ffffff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   settingDescription: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
-    fontSize: 13,
-    color: '#666666',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1a1a1a',
-    marginHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    marginBottom: 20,
-  },
-  logoutText: {
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 15,
-    color: '#ff4444',
-  },
-  version: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 13,
-    color: '#666666',
-    textAlign: 'center',
+    color: '#888888',
   },
 });

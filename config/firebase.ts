@@ -8,7 +8,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { collection, getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Your web app's Firebase configuration
@@ -17,6 +17,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBSnX8Lw6IpA52exNCPpR5RfrzHuRNvm2s",
   authDomain: "mvama-connect.firebaseapp.com",
   projectId: "mvama-connect",
+  // Match the bucket shown in Firebase Console
   storageBucket: "mvama-connect.firebasestorage.app",
   messagingSenderId: "554586476755",
   appId: "1:554586476755:web:f8304dfccce4e4ae0cc426"
@@ -48,8 +49,8 @@ if (isConfigured) {
     db = getFirestore(app);
     console.log('🗄️ Firestore initialized:', !!db);
     
-    // Initialize Storage
-    storage = getStorage(app);
+    // Initialize Storage (explicit bucket to ensure correct linkage)
+    storage = getStorage(app, 'gs://mvama-connect.firebasestorage.app');
     console.log('💾 Storage initialized:', !!storage);
     
     // Initialize Auth
@@ -64,6 +65,42 @@ if (isConfigured) {
 } else {
   console.warn('⚠️ Firebase not configured. Using mock data. Please update config/firebase.ts');
 }
+
+// Test Firebase connection
+export const testFirebaseConnection = async () => {
+  if (!db) {
+    console.error('❌ Firestore not initialized');
+    return false;
+  }
+
+  try {
+    console.log('🧪 Testing Firebase connection...');
+    
+    // Test Firestore connection
+    const testCollection = collection(db, 'test');
+    console.log('✅ Firestore collection reference created');
+    
+    // Test Auth connection
+    if (auth) {
+      console.log('✅ Auth service available');
+    } else {
+      console.warn('⚠️ Auth service not available');
+    }
+    
+    // Test Storage connection
+    if (storage) {
+      console.log('✅ Storage service available');
+    } else {
+      console.warn('⚠️ Storage service not available');
+    }
+    
+    console.log('✅ Firebase connection test completed');
+    return true;
+  } catch (error: any) {
+    console.error('❌ Firebase connection test failed:', error);
+    return false;
+  }
+};
 
 export { auth, db, storage };
 

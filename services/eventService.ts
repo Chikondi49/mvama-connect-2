@@ -1,5 +1,5 @@
 // Event Service for Firebase Firestore
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export interface Event {
@@ -26,6 +26,30 @@ export interface Event {
 
 class EventService {
   private readonly COLLECTION = 'events';
+  
+  // Test Firebase connection
+  async testFirebaseConnection(): Promise<boolean> {
+    console.log('🧪 Testing Firebase connection for events...');
+    
+    if (!db) {
+      console.error('❌ Firebase db is not initialized');
+      return false;
+    }
+
+    try {
+      // Try to get the events collection to test connection
+      const testCollection = collection(db, this.COLLECTION);
+      const testSnapshot = await getDocs(testCollection);
+      console.log('✅ Firebase connection successful for events');
+      console.log('📊 Events collection size:', testSnapshot.size);
+      return true;
+    } catch (error: any) {
+      console.error('❌ Firebase connection failed for events:', error);
+      console.error('❌ Error code:', error?.code);
+      console.error('❌ Error message:', error?.message);
+      return false;
+    }
+  }
 
   // Get all events
   async getAllEvents(): Promise<Event[]> {
@@ -427,6 +451,119 @@ class EventService {
         updatedAt: new Date().toISOString(),
       }
     ];
+  }
+
+  // Create a new event
+  async createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      console.log('📅 Creating new event:', eventData.title);
+      console.log('📝 Event data received:', eventData);
+      console.log('📝 Database reference:', this.COLLECTION);
+      
+      // Check if Firebase is initialized
+      if (!db) {
+        console.error('❌ Firebase database is not initialized');
+        throw new Error('Firebase database is not initialized');
+      }
+      
+      console.log('✅ Firebase database is initialized');
+      
+      const now = new Date().toISOString();
+      const eventToCreate = {
+        ...eventData,
+        createdAt: now,
+        updatedAt: now,
+        // Ensure all required fields are present
+        currentAttendees: eventData.currentAttendees || 0,
+        // Convert date string to proper format
+        date: eventData.date,
+      };
+      
+      console.log('📝 Final event data to create:', eventToCreate);
+      console.log('📝 Collection name:', this.COLLECTION);
+
+      const eventsCollection = collection(db, this.COLLECTION);
+      console.log('📝 Events collection reference created:', eventsCollection.path);
+      console.log('🔄 Calling addDoc...');
+      
+      const docRef = await addDoc(eventsCollection, eventToCreate);
+      console.log(`✅ Event created successfully with ID: ${docRef.id}`);
+      return docRef.id;
+    } catch (error: any) {
+      console.error('❌ Error creating event:', error);
+      console.error('❌ Error details:', {
+        name: error?.name,
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack
+      });
+      throw new Error(`Failed to create event: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  // Update an existing event
+  async updateEvent(eventId: string, updateData: Partial<Event>): Promise<void> {
+    try {
+      console.log('📅 Updating event:', eventId);
+      console.log('📝 Update data received:', updateData);
+      console.log('📝 Database reference:', this.COLLECTION);
+      
+      const eventRef = doc(db, this.COLLECTION, eventId);
+      console.log('📝 Document reference created:', eventRef.path);
+      
+      // Check if document exists before updating
+      console.log('🔍 Checking if document exists...');
+      const docSnap = await getDoc(eventRef);
+      if (!docSnap.exists()) {
+        console.error('❌ Document does not exist:', eventId);
+        throw new Error(`Event with ID ${eventId} does not exist`);
+      }
+      console.log('✅ Document exists, proceeding with update...');
+      
+      const updatePayload = {
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+      };
+
+      console.log('📝 Update payload:', updatePayload);
+      console.log('🔄 Calling updateDoc...');
+
+      await updateDoc(eventRef, updatePayload);
+      console.log(`✅ Event updated successfully: ${eventId}`);
+    } catch (error) {
+      console.error('❌ Error updating event:', error);
+      console.error('❌ Error details:', {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack
+      });
+      throw error;
+    }
+  }
+
+  // Delete an event
+  async deleteEvent(eventId: string): Promise<void> {
+    try {
+      console.log('📅 [SERVICE] Deleting event:', eventId);
+      console.log('📅 [SERVICE] Database object:', !!db);
+      console.log('📅 [SERVICE] Collection name:', this.COLLECTION);
+      
+      const eventRef = doc(db, this.COLLECTION, eventId);
+      console.log('📅 [SERVICE] Document reference created:', !!eventRef);
+      console.log('📅 [SERVICE] Document path:', eventRef.path);
+      
+      console.log('📅 [SERVICE] Calling deleteDoc...');
+      await deleteDoc(eventRef);
+      console.log(`✅ [SERVICE] Event deleted successfully: ${eventId}`);
+    } catch (error) {
+      console.error('❌ [SERVICE] Error deleting event:', error);
+      console.error('❌ [SERVICE] Error details:', {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack
+      });
+      throw error;
+    }
   }
 }
 

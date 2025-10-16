@@ -1,9 +1,26 @@
 // News Service - Firebase Integration
+import * as FileSystem from 'expo-file-system';
 import {
+    addDoc,
     collection,
-    getDocs
+    deleteDoc,
+    doc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import {
+    deleteObject,
+    getDownloadURL,
+    ref,
+    uploadBytes,
+    uploadString
+} from 'firebase/storage';
+import { db, storage } from '../config/firebase';
 
 export interface NewsArticle {
   id: string;
@@ -213,6 +230,411 @@ class NewsService {
       console.log('📰 Falling back to mock data');
       const mockNews = this.getMockNews();
       return mockNews.find(news => news.id === id) || null;
+    }
+  }
+
+  // Create new news article
+  async createNews(articleData: CreateNewsArticle): Promise<string> {
+    console.log('📝 Creating new news article:', articleData.title);
+    
+    if (!db) {
+      throw new Error('Firebase is not initialized');
+    }
+
+    try {
+      const newsCollection = collection(db, this.COLLECTION_NAME);
+      const docData = {
+        ...articleData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        featured: articleData.featured || false
+      };
+      
+      const docRef = await addDoc(newsCollection, docData);
+      console.log('✅ News article created with ID:', docRef.id);
+      return docRef.id;
+    } catch (error: any) {
+      console.error('❌ Error creating news article:', error);
+      throw new Error(`Failed to create news article: ${error.message}`);
+    }
+  }
+
+  // Update existing news article
+  async updateNews(id: string, articleData: Partial<CreateNewsArticle>): Promise<void> {
+    console.log('✏️ Updating news article:', id);
+    
+    if (!db) {
+      throw new Error('Firebase is not initialized');
+    }
+
+    try {
+      const docRef = doc(db, this.COLLECTION_NAME, id);
+      const updateData = {
+        ...articleData,
+        updatedAt: serverTimestamp()
+      };
+      
+      await updateDoc(docRef, updateData);
+      console.log('✅ News article updated successfully');
+    } catch (error: any) {
+      console.error('❌ Error updating news article:', error);
+      throw new Error(`Failed to update news article: ${error.message}`);
+    }
+  }
+
+  // Delete news article
+  async deleteNews(id: string): Promise<void> {
+    console.log('🗑️ Deleting news article:', id);
+    
+    if (!db) {
+      throw new Error('Firebase is not initialized');
+    }
+
+    try {
+      const docRef = doc(db, this.COLLECTION_NAME, id);
+      await deleteDoc(docRef);
+      console.log('✅ News article deleted successfully');
+    } catch (error: any) {
+      console.error('❌ Error deleting news article:', error);
+      throw new Error(`Failed to delete news article: ${error.message}`);
+    }
+  }
+
+  // Toggle featured status
+  async toggleFeatured(id: string, featured: boolean): Promise<void> {
+    console.log('⭐ Toggling featured status for article:', id, 'to:', featured);
+    
+    if (!db) {
+      throw new Error('Firebase is not initialized');
+    }
+
+    try {
+      const docRef = doc(db, this.COLLECTION_NAME, id);
+      await updateDoc(docRef, {
+        featured,
+        updatedAt: serverTimestamp()
+      });
+      console.log('✅ Featured status updated successfully');
+    } catch (error: any) {
+      console.error('❌ Error updating featured status:', error);
+      throw new Error(`Failed to update featured status: ${error.message}`);
+    }
+  }
+
+  // Bulk delete news articles
+  async bulkDeleteNews(ids: string[]): Promise<void> {
+    console.log('🗑️ Bulk deleting news articles:', ids.length, 'items');
+    
+    if (!db) {
+      throw new Error('Firebase is not initialized');
+    }
+
+    try {
+      const deletePromises = ids.map(id => {
+        const docRef = doc(db, this.COLLECTION_NAME, id);
+        return deleteDoc(docRef);
+      });
+      
+      await Promise.all(deletePromises);
+      console.log('✅ Bulk delete completed successfully');
+    } catch (error: any) {
+      console.error('❌ Error in bulk delete:', error);
+      throw new Error(`Failed to delete articles: ${error.message}`);
+    }
+  }
+
+  // Bulk update featured status
+  async bulkUpdateFeatured(ids: string[], featured: boolean): Promise<void> {
+    console.log('⭐ Bulk updating featured status:', ids.length, 'items to:', featured);
+    
+    if (!db) {
+      throw new Error('Firebase is not initialized');
+    }
+
+    try {
+      const updatePromises = ids.map(id => {
+        const docRef = doc(db, this.COLLECTION_NAME, id);
+        return updateDoc(docRef, {
+          featured,
+          updatedAt: serverTimestamp()
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      console.log('✅ Bulk featured update completed successfully');
+    } catch (error: any) {
+      console.error('❌ Error in bulk featured update:', error);
+      throw new Error(`Failed to update featured status: ${error.message}`);
+    }
+  }
+
+  // Get news with advanced filtering and sorting
+  async getNewsWithFilters(options: {
+    category?: string;
+    featured?: boolean;
+    sortBy?: 'date' | 'title' | 'featured';
+    sortOrder?: 'asc' | 'desc';
+    limitCount?: number;
+  } = {}): Promise<NewsArticle[]> {
+    console.log('🔍 Getting news with filters:', options);
+    
+    if (!db) {
+      console.warn('⚠️ Firebase db is null/undefined, filtering mock data');
+      return this.filterMockNews(options);
+    }
+
+    try {
+      let newsQuery = collection(db, this.COLLECTION_NAME);
+      let constraints: any[] = [];
+      
+      // Add where clauses
+      if (options.category) {
+        constraints.push(where('category', '==', options.category));
+      }
+      if (options.featured !== undefined) {
+        constraints.push(where('featured', '==', options.featured));
+      }
+      
+      // Add ordering
+      if (options.sortBy) {
+        const direction = options.sortOrder === 'desc' ? 'desc' : 'asc';
+        if (options.sortBy === 'date') {
+          constraints.push(orderBy('createdAt', direction));
+        } else {
+          constraints.push(orderBy(options.sortBy, direction));
+        }
+      } else {
+        constraints.push(orderBy('createdAt', 'desc'));
+      }
+      
+      // Add limit
+      if (options.limitCount) {
+        constraints.push(limit(options.limitCount));
+      }
+      
+      const q = query(newsQuery, ...constraints);
+      const querySnapshot = await getDocs(q);
+      
+      const articles: NewsArticle[] = [];
+      querySnapshot.forEach((doc) => {
+        articles.push(this.processNewsDocument(doc.id, doc.data()));
+      });
+      
+      console.log(`✅ Retrieved ${articles.length} filtered articles`);
+      return articles;
+      
+    } catch (error: any) {
+      console.error('❌ Error getting filtered news:', error);
+      console.log('📰 Falling back to filtered mock data');
+      return this.filterMockNews(options);
+    }
+  }
+
+  // Filter mock news data
+  private filterMockNews(options: {
+    category?: string;
+    featured?: boolean;
+    sortBy?: 'date' | 'title' | 'featured';
+    sortOrder?: 'asc' | 'desc';
+    limitCount?: number;
+  }): NewsArticle[] {
+    let filtered = this.getMockNews();
+    
+    // Apply filters
+    if (options.category) {
+      filtered = filtered.filter(news => news.category === options.category);
+    }
+    if (options.featured !== undefined) {
+      filtered = filtered.filter(news => news.featured === options.featured);
+    }
+    
+    // Apply sorting
+    if (options.sortBy) {
+      filtered.sort((a, b) => {
+        let aVal: any, bVal: any;
+        
+        switch (options.sortBy) {
+          case 'date':
+            aVal = new Date(a.date);
+            bVal = new Date(b.date);
+            break;
+          case 'title':
+            aVal = a.title.toLowerCase();
+            bVal = b.title.toLowerCase();
+            break;
+          case 'featured':
+            aVal = a.featured ? 1 : 0;
+            bVal = b.featured ? 1 : 0;
+            break;
+          default:
+            return 0;
+        }
+        
+        if (aVal < bVal) return options.sortOrder === 'desc' ? 1 : -1;
+        if (aVal > bVal) return options.sortOrder === 'desc' ? -1 : 1;
+        return 0;
+      });
+    }
+    
+    // Apply limit
+    if (options.limitCount) {
+      filtered = filtered.slice(0, options.limitCount);
+    }
+    
+    return filtered;
+  }
+
+  // Upload image to Firebase Storage
+  async uploadImage(imageUri: string, fileName?: string): Promise<string> {
+    console.log('📸 Uploading image to Firebase Storage:', imageUri);
+    
+    if (!storage) {
+      throw new Error('Firebase Storage is not initialized');
+    }
+
+    try {
+      // Generate unique filename if not provided
+      const timestamp = Date.now();
+      const finalFileName = fileName || `news-image-${timestamp}.jpg`;
+      
+      // Create storage reference
+      const imageRef = ref(storage, `news-images/${finalFileName}`);
+      
+      // If this is a local/content URI, prefer base64 upload for reliability
+      if (imageUri.startsWith('file:') || imageUri.startsWith('content:')) {
+        console.log('🔄 Reading file as base64 for upload...');
+        const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 });
+        console.log('⬆️ Uploading base64 image to storage...');
+        const snapshot = await uploadString(imageRef, base64, 'base64');
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log('✅ Image uploaded successfully (base64):', downloadURL);
+        return downloadURL;
+      }
+
+      // Fallback: fetch as blob (for http/https URIs)
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      console.log('⬆️ Uploading image blob to storage...');
+      const snapshot = await uploadBytes(imageRef, blob);
+      
+      // Get download URL
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      console.log('✅ Image uploaded successfully:', downloadURL);
+      
+      return downloadURL;
+    } catch (error: any) {
+      console.error('❌ Error uploading image:', error);
+      throw new Error(`Failed to upload image: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  // Delete image from Firebase Storage
+  async deleteImage(imageUrl: string): Promise<void> {
+    console.log('🗑️ Deleting image from Firebase Storage:', imageUrl);
+    
+    if (!storage) {
+      throw new Error('Firebase Storage is not initialized');
+    }
+
+    try {
+      // Extract file path from URL
+      const url = new URL(imageUrl);
+      const pathMatch = url.pathname.match(/\/o\/(.*?)\?/);
+      
+      if (!pathMatch) {
+        console.warn('⚠️ Could not extract file path from URL, skipping deletion');
+        return;
+      }
+      
+      const filePath = decodeURIComponent(pathMatch[1]);
+      const imageRef = ref(storage, filePath);
+      
+      await deleteObject(imageRef);
+      console.log('✅ Image deleted successfully from storage');
+    } catch (error: any) {
+      console.error('❌ Error deleting image:', error);
+      // Don't throw error for image deletion failures
+      console.warn('⚠️ Image deletion failed, but continuing with operation');
+    }
+  }
+
+  // Create news with image upload
+  async createNewsWithImage(articleData: CreateNewsArticle, imageUri?: string): Promise<string> {
+    console.log('📝 Creating news article with image:', articleData.title);
+    
+    let finalImageUrl = articleData.imageUrl;
+    
+    // Upload image if provided
+    if (imageUri && imageUri !== articleData.imageUrl) {
+      try {
+        finalImageUrl = await this.uploadImage(imageUri);
+      } catch (error) {
+        console.warn('⚠️ Image upload failed, using provided URL:', error);
+        // Continue with provided URL if upload fails
+      }
+    }
+    
+    // Create article with final image URL
+    const finalArticleData = {
+      ...articleData,
+      imageUrl: finalImageUrl
+    };
+    
+    return await this.createNews(finalArticleData);
+  }
+
+  // Update news with image upload
+  async updateNewsWithImage(id: string, articleData: Partial<CreateNewsArticle>, imageUri?: string): Promise<void> {
+    console.log('✏️ Updating news article with image:', id);
+    
+    let finalImageUrl = articleData.imageUrl;
+    
+    // Upload new image if provided
+    if (imageUri && imageUri !== articleData.imageUrl) {
+      try {
+        // Get current article to delete old image
+        const currentArticle = await this.getNewsById(id);
+        
+        // Upload new image
+        finalImageUrl = await this.uploadImage(imageUri);
+        
+        // Delete old image if it exists and is from Firebase Storage
+        if (currentArticle?.imageUrl && currentArticle.imageUrl.includes('firebasestorage.googleapis.com')) {
+          await this.deleteImage(currentArticle.imageUrl);
+        }
+      } catch (error) {
+        console.warn('⚠️ Image upload failed, using provided URL:', error);
+        // Continue with provided URL if upload fails
+      }
+    }
+    
+    // Update article with final image URL
+    const finalArticleData = {
+      ...articleData,
+      imageUrl: finalImageUrl
+    };
+    
+    return await this.updateNews(id, finalArticleData);
+  }
+
+  // Delete news with image cleanup
+  async deleteNewsWithImage(id: string): Promise<void> {
+    console.log('🗑️ Deleting news article with image cleanup:', id);
+    
+    try {
+      // Get article to check for image
+      const article = await this.getNewsById(id);
+      
+      // Delete the article first
+      await this.deleteNews(id);
+      
+      // Delete associated image if it's from Firebase Storage
+      if (article?.imageUrl && article.imageUrl.includes('firebasestorage.googleapis.com')) {
+        await this.deleteImage(article.imageUrl);
+      }
+    } catch (error: any) {
+      console.error('❌ Error deleting news with image:', error);
+      throw new Error(`Failed to delete news article: ${error.message}`);
     }
   }
 

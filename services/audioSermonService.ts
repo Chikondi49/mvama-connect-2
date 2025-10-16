@@ -1,5 +1,5 @@
 // Audio Sermon Service for Firebase Firestore
-import { addDoc, collection, doc, getDoc, getDocs, increment, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export interface AudioSermon {
@@ -457,6 +457,131 @@ class AudioSermonService {
       
     } catch (error) {
       console.error('❌ Error creating sample data:', error);
+    }
+  }
+
+  // Create a new audio sermon
+  async createAudioSermon(sermonData: Omit<AudioSermon, 'id'>): Promise<string> {
+    try {
+      console.log('🎵 Creating new audio sermon:', sermonData.title);
+      
+      const docRef = await addDoc(collection(db, this.COLLECTIONS.SERMONS), sermonData);
+      console.log(`✅ Audio sermon created with ID: ${docRef.id}`);
+      return docRef.id;
+    } catch (error) {
+      console.error('❌ Error creating audio sermon:', error);
+      throw error;
+    }
+  }
+
+  // Update an existing audio sermon
+  async updateAudioSermon(sermonId: string, updateData: Partial<AudioSermon>): Promise<void> {
+    try {
+      console.log('🎵 Updating audio sermon:', sermonId);
+      console.log('📝 Update data received:', updateData);
+      console.log('📝 Database reference:', this.COLLECTIONS.SERMONS);
+      
+      const sermonRef = doc(db, this.COLLECTIONS.SERMONS, sermonId);
+      console.log('📝 Document reference created:', sermonRef.path);
+      
+      // Check if document exists before updating
+      console.log('🔍 Checking if document exists...');
+      const docSnap = await getDoc(sermonRef);
+      if (!docSnap.exists()) {
+        console.error('❌ Document does not exist:', sermonId);
+        throw new Error(`Sermon with ID ${sermonId} does not exist`);
+      }
+      console.log('✅ Document exists, proceeding with update...');
+      
+      console.log('🔄 Calling updateDoc...');
+      await updateDoc(sermonRef, updateData);
+      console.log(`✅ Audio sermon updated successfully: ${sermonId}`);
+    } catch (error) {
+      console.error('❌ Error updating audio sermon:', error);
+      console.error('❌ Error details:', {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack
+      });
+      throw error;
+    }
+  }
+
+  // Delete an audio sermon
+  async deleteAudioSermon(sermonId: string): Promise<void> {
+    try {
+      console.log('🎵 [SERVICE] Deleting audio sermon:', sermonId);
+      console.log('🎵 [SERVICE] Database object:', !!db);
+      console.log('🎵 [SERVICE] Collection name:', this.COLLECTIONS.SERMONS);
+      
+      const sermonRef = doc(db, this.COLLECTIONS.SERMONS, sermonId);
+      console.log('🎵 [SERVICE] Document reference created:', !!sermonRef);
+      console.log('🎵 [SERVICE] Document path:', sermonRef.path);
+      
+      console.log('🎵 [SERVICE] Calling deleteDoc...');
+      await deleteDoc(sermonRef);
+      console.log(`✅ [SERVICE] Audio sermon deleted successfully: ${sermonId}`);
+    } catch (error) {
+      console.error('❌ [SERVICE] Error deleting audio sermon:', error);
+      console.error('❌ [SERVICE] Error details:', {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack
+      });
+      throw error;
+    }
+  }
+
+  // Create a new audio series
+  async createAudioSeries(seriesData: Omit<AudioSeries, 'id'>): Promise<string> {
+    try {
+      console.log('🎵 Creating new audio series:', seriesData.title);
+      
+      const docRef = await addDoc(collection(db, this.COLLECTIONS.SERIES), seriesData);
+      console.log(`✅ Audio series created with ID: ${docRef.id}`);
+      return docRef.id;
+    } catch (error) {
+      console.error('❌ Error creating audio series:', error);
+      throw error;
+    }
+  }
+
+  // Update an existing audio series
+  async updateAudioSeries(seriesId: string, updateData: Partial<AudioSeries>): Promise<void> {
+    try {
+      console.log('🎵 Updating audio series:', seriesId);
+      
+      const seriesRef = doc(db, this.COLLECTIONS.SERIES, seriesId);
+      await updateDoc(seriesRef, updateData);
+      console.log(`✅ Audio series updated: ${seriesId}`);
+    } catch (error) {
+      console.error('❌ Error updating audio series:', error);
+      throw error;
+    }
+  }
+
+  // Delete an audio series
+  async deleteAudioSeries(seriesId: string): Promise<void> {
+    try {
+      console.log('🎵 [SERVICE] Deleting audio series:', seriesId);
+      console.log('🎵 [SERVICE] Database object:', !!db);
+      console.log('🎵 [SERVICE] Collection name:', this.COLLECTIONS.SERIES);
+      
+      const seriesRef = doc(db, this.COLLECTIONS.SERIES, seriesId);
+      console.log('🎵 [SERVICE] Document reference created:', !!seriesRef);
+      console.log('🎵 [SERVICE] Document path:', seriesRef.path);
+      
+      console.log('🎵 [SERVICE] Calling deleteDoc...');
+      await deleteDoc(seriesRef);
+      console.log(`✅ [SERVICE] Audio series deleted successfully: ${seriesId}`);
+    } catch (error) {
+      console.error('❌ [SERVICE] Error deleting audio series:', error);
+      console.error('❌ [SERVICE] Error details:', {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack
+      });
+      throw error;
     }
   }
 }

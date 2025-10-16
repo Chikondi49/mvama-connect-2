@@ -1,5 +1,5 @@
 // YouTube Data API v3 Service
-import { MOCK_SERMONS, YOUTUBE_CONFIG } from '../config/youtube';
+import { YOUTUBE_CONFIG } from '../config/youtube';
 
 export interface YouTubeVideo {
   id: string;
@@ -68,10 +68,10 @@ class YouTubeService {
     console.log('   - CHANNEL_HANDLE:', this.CHANNEL_HANDLE);
     console.log('   - BASE_URL:', this.BASE_URL);
     
-    // Use mock data if configured or if no API key is provided
+    // Use real data only - no mock data fallback
     if (this.USE_MOCK_DATA || this.API_KEY === 'YOUR_YOUTUBE_API_KEY_HERE') {
-      console.log('📱 Using mock data - configuration set to use mock data');
-      return this.getMockVideos(maxResults);
+      console.log('⚠️ Mock data disabled - returning empty array');
+      return [];
     }
     
     console.log('🌐 Attempting to fetch real YouTube data...');
@@ -102,8 +102,8 @@ class YouTubeService {
       console.log('✅ API key test successful:', testData.items?.length || 0, 'items found');
     } catch (testError) {
       console.error('❌ API key test failed:', testError);
-      console.log('🔄 Falling back to mock data due to API key test failure');
-      return this.getMockVideos(maxResults);
+      console.log('⏳ API error - returning empty array');
+      return [];
     }
     
     try {
@@ -132,8 +132,8 @@ class YouTubeService {
             return [];
           }
           
-          console.log('🔄 Falling back to mock data due to API error');
-          return this.getMockVideos(maxResults);
+          console.log('⏳ API error - returning empty array');
+          return [];
         }
         
         if (searchData.items && searchData.items.length > 0) {
@@ -181,8 +181,8 @@ class YouTubeService {
                 return [];
               }
               
-              console.log('🔄 Falling back to mock data');
-              return this.getMockVideos(maxResults);
+              console.log('⏳ No videos found - returning empty array');
+              return [];
             }
             
             if (videoData.items && videoData.items.length > 0) {
@@ -200,8 +200,8 @@ class YouTubeService {
               return videos;
             } else {
               console.log('⚠️ No videos found via direct search');
-              console.log('🔄 Falling back to mock data');
-              return this.getMockVideos(maxResults);
+              console.log('⏳ No videos found - returning empty array');
+              return [];
             }
           }
         }
@@ -296,16 +296,6 @@ class YouTubeService {
     }
   }
 
-  // Get mock videos for development/demo
-  private getMockVideos(maxResults: number): YouTubeVideo[] {
-    console.log('📱 Returning mock videos for development');
-    const mockVideos = MOCK_SERMONS.slice(0, maxResults).map(sermon => ({
-      ...sermon,
-      publishedAt: sermon.publishedAt,
-    }));
-    console.log('📱 Mock videos count:', mockVideos.length);
-    return mockVideos;
-  }
 
   // Format ISO 8601 duration to readable format
   private formatDuration(isoDuration: string): string {

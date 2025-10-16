@@ -7,6 +7,8 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -24,6 +26,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     console.log('🔐 Setting up auth state listener...');
@@ -56,14 +60,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const profile = await authService.getUserProfile(user.uid);
             setUserProfile(profile);
             console.log('👤 User profile loaded:', profile?.displayName);
+            
+            // Check admin status
+            console.log('🔍 User profile role:', profile.role);
+            console.log('🔍 Role type:', typeof profile.role);
+            console.log('🔍 Role comparison - admin:', profile.role === 'admin');
+            console.log('🔍 Role comparison - super_admin:', profile.role === 'super_admin');
+            
+            const adminStatus = profile.role === 'admin' || profile.role === 'super_admin';
+            const superAdminStatus = profile.role === 'super_admin';
+            setIsAdmin(adminStatus);
+            setIsSuperAdmin(superAdminStatus);
+            console.log('🔐 Admin status:', { isAdmin: adminStatus, isSuperAdmin: superAdminStatus });
+            
             console.log('✅ User is now authenticated and will be redirected');
             console.log('🔄 Auth state updated - user should be redirected to main app');
           } catch (error) {
             console.error('❌ Error loading user profile:', error);
             setUserProfile(null);
+            setIsAdmin(false);
+            setIsSuperAdmin(false);
           }
         } else {
           setUserProfile(null);
+          setIsAdmin(false);
+          setIsSuperAdmin(false);
           console.log('🔐 No user - will redirect to login');
           console.log('🔄 User state cleared - should trigger redirect');
         }
@@ -130,14 +151,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = async (): Promise<void> => {
     try {
       console.log('🔐 AuthContext: Starting sign out process...');
+      console.log('👤 Current user before logout:', user?.uid);
       setLoading(true);
-      await authService.signOut();
-      console.log('✅ AuthContext: Sign out successful');
-      // The auth state listener will automatically update the user state to null
+      
+      // Clear user state immediately
+      console.log('🧹 Clearing user state...');
+      setUser(null);
+      setUserProfile(null);
+      setIsAdmin(false);
+      setIsSuperAdmin(false);
+      
+      // Try to sign out from Firebase
+      try {
+        await authService.signOut();
+        console.log('✅ AuthContext: Firebase sign out successful');
+      } catch (firebaseError) {
+        console.error('❌ Firebase sign out failed:', firebaseError);
+        // Continue with logout even if Firebase fails
+      }
+      
+      console.log('✅ AuthContext: Sign out process completed');
+      
+      // Ensure loading is set to false after logout
+      setLoading(false);
+      
+      // Force a small delay to ensure state is updated
+      setTimeout(() => {
+        console.log('🔄 AuthContext: Final state check after logout');
+        console.log('👤 User after logout:', user);
+        console.log('👤 UserProfile after logout:', userProfile);
+        console.log('👤 IsAdmin after logout:', isAdmin);
+        console.log('👤 IsSuperAdmin after logout:', isSuperAdmin);
+      }, 100);
+      
     } catch (error) {
       console.error('❌ AuthContext: Sign out failed:', error);
+      console.error('❌ Error details:', error);
+      
+      // Even if there's an error, clear the state
+      setUser(null);
+      setUserProfile(null);
+      setIsAdmin(false);
+      setIsSuperAdmin(false);
       setLoading(false);
-      throw error;
+      
+      // Don't throw the error, just log it
+      console.log('🔄 AuthContext: State cleared despite error');
     }
   };
 
@@ -175,6 +234,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     userProfile,
     loading,
+    isAdmin,
+    isSuperAdmin,
     signUp,
     signIn,
     signOut,

@@ -151,55 +151,108 @@ class BibleService {
   // Get verse of the day using bible-api.com
   async getVerseOfTheDay(): Promise<BibleSearchResult> {
     try {
-      console.log('🌟 Fetching verse of the day...');
-      // Use a specific verse instead of random endpoint
-      const response = await fetch(`${this.BASE_URL}/john+3:16?translation=web`);
+      console.log('🌟 Fetching dynamic verse of the day...');
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Get today's date to determine which verse to show
+      const today = new Date();
+      const dayOfYear = this.getDayOfYear(today);
+      
+      // Array of inspirational verses that rotate daily
+      const dailyVerses = [
+        { book: 'john', chapter: 3, verse: 16, text: 'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.' },
+        { book: 'jeremiah', chapter: 29, verse: 11, text: 'For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future.' },
+        { book: 'psalms', chapter: 23, verse: 1, text: 'The Lord is my shepherd; I shall not want.' },
+        { book: 'romans', chapter: 8, verse: 28, text: 'And we know that in all things God works for the good of those who love him, who have been called according to his purpose.' },
+        { book: 'philippians', chapter: 4, verse: 13, text: 'I can do all this through him who gives me strength.' },
+        { book: 'proverbs', chapter: 3, verse: 5, text: 'Trust in the Lord with all your heart and lean not on your own understanding.' },
+        { book: 'isaiah', chapter: 40, verse: 31, text: 'But those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary, they will walk and not be faint.' },
+        { book: 'matthew', chapter: 11, verse: 28, text: 'Come to me, all you who are weary and burdened, and I will give you rest.' },
+        { book: 'psalms', chapter: 46, verse: 1, text: 'God is our refuge and strength, an ever-present help in trouble.' },
+        { book: '2 corinthians', chapter: 5, verse: 17, text: 'Therefore, if anyone is in Christ, the new creation has come: The old has gone, the new is here!' },
+        { book: 'ephesians', chapter: 2, verse: 8, text: 'For it is by grace you have been saved, through faith—and this is not from yourselves, it is the gift of God.' },
+        { book: 'galatians', chapter: 5, verse: 22, text: 'But the fruit of the Spirit is love, joy, peace, forbearance, kindness, goodness, faithfulness.' },
+        { book: 'psalms', chapter: 27, verse: 1, text: 'The Lord is my light and my salvation—whom shall I fear? The Lord is the stronghold of my life—of whom shall I be afraid?' },
+        { book: 'hebrews', chapter: 11, verse: 1, text: 'Now faith is confidence in what we hope for and assurance about what we do not see.' },
+        { book: 'james', chapter: 1, verse: 17, text: 'Every good and perfect gift is from above, coming down from the Father of the heavenly lights, who does not change like shifting shadows.' },
+        { book: 'psalms', chapter: 91, verse: 1, text: 'Whoever dwells in the shelter of the Most High will rest in the shadow of the Almighty.' },
+        { book: 'romans', chapter: 12, verse: 2, text: 'Do not conform to the pattern of this world, but be transformed by the renewing of your mind.' },
+        { book: 'psalms', chapter: 37, verse: 4, text: 'Take delight in the Lord, and he will give you the desires of your heart.' },
+        { book: '1 corinthians', chapter: 13, verse: 4, text: 'Love is patient, love is kind. It does not envy, it does not boast, it is not proud.' },
+        { book: 'psalms', chapter: 139, verse: 14, text: 'I praise you because I am fearfully and wonderfully made; your works are wonderful, I know that full well.' },
+        { book: 'matthew', chapter: 6, verse: 33, text: 'But seek first his kingdom and his righteousness, and all these things will be given to you as well.' },
+        { book: 'psalms', chapter: 16, verse: 11, text: 'You make known to me the path of life; you will fill me with joy in your presence, with eternal pleasures at your right hand.' },
+        { book: 'romans', chapter: 15, verse: 13, text: 'May the God of hope fill you with all joy and peace as you trust in him, so that you may overflow with hope by the power of the Holy Spirit.' },
+        { book: 'psalms', chapter: 34, verse: 8, text: 'Taste and see that the Lord is good; blessed is the one who takes refuge in him.' },
+        { book: 'john', chapter: 14, verse: 6, text: 'Jesus answered, "I am the way and the truth and the life. No one comes to the Father except through me."' },
+        { book: 'psalms', chapter: 103, verse: 12, text: 'As far as the east is from the west, so far has he removed our transgressions from us.' },
+        { book: '1 john', chapter: 4, verse: 19, text: 'We love because he first loved us.' },
+        { book: 'psalms', chapter: 25, verse: 4, text: 'Show me your ways, Lord, teach me your paths.' },
+        { book: 'colossians', chapter: 3, verse: 23, text: 'Whatever you do, work at it with all your heart, as working for the Lord, not for human masters.' },
+        { book: 'psalms', chapter: 19, verse: 14, text: 'May these words of my mouth and this meditation of my heart be pleasing in your sight, Lord, my Rock and my Redeemer.' }
+      ];
+      
+      // Select verse based on day of year (0-364, cycles through the array)
+      const selectedVerse = dailyVerses[dayOfYear % dailyVerses.length];
+      
+      console.log(`📅 Day of year: ${dayOfYear}, Selected verse: ${selectedVerse.book} ${selectedVerse.chapter}:${selectedVerse.verse}`);
+      
+      // Try to fetch the verse from the API
+      const response = await fetch(`${this.BASE_URL}/${selectedVerse.book}+${selectedVerse.chapter}:${selectedVerse.verse}?translation=web`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const verse = data.verses && data.verses[0] ? data.verses[0] : null;
+        
+        if (verse) {
+          return {
+            id: `${verse.book_id}-${verse.chapter}-${verse.verse}`,
+            bookId: verse.book_id || selectedVerse.book.toUpperCase(),
+            bookName: verse.book_name || this.capitalizeFirst(selectedVerse.book),
+            chapterNumber: verse.chapter || selectedVerse.chapter,
+            verseNumber: verse.verse || selectedVerse.verse,
+            text: verse.text || selectedVerse.text,
+            translation: 'WEB'
+          };
+        }
       }
       
-      const data = await response.json();
-      console.log('✅ Verse of the day loaded:', data);
+      // Fallback to predefined verse
+      return {
+        id: `${selectedVerse.book}-${selectedVerse.chapter}-${selectedVerse.verse}`,
+        bookId: selectedVerse.book.toUpperCase(),
+        bookName: this.capitalizeFirst(selectedVerse.book),
+        chapterNumber: selectedVerse.chapter,
+        verseNumber: selectedVerse.verse,
+        text: selectedVerse.text,
+        translation: 'WEB'
+      };
       
-      // Handle the actual bible-api.com response structure
-      const verse = data.verses && data.verses[0] ? data.verses[0] : null;
-      
-      if (verse) {
-        return {
-          id: `${verse.book_id}-${verse.chapter}-${verse.verse}`,
-          bookId: verse.book_id || 'JHN',
-          bookName: verse.book_name || 'John',
-          chapterNumber: verse.chapter || 3,
-          verseNumber: verse.verse || 16,
-          text: verse.text || 'For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.',
-          translation: 'WEB'
-        };
-      } else {
-        // Fallback if no verse data
-        return {
-          id: 'john-3-16',
-          bookId: 'JHN',
-          bookName: 'John',
-          chapterNumber: 3,
-          verseNumber: 16,
-          text: 'For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.',
-          translation: 'WEB'
-        };
-      }
     } catch (error) {
       console.error('❌ Error fetching verse of the day:', error);
-      // Return fallback verse
+      // Return a fallback verse
       return {
         id: 'john-3-16',
         bookId: 'JHN',
         bookName: 'John',
         chapterNumber: 3,
         verseNumber: 16,
-        text: 'For God so loved the world, that he gave his one and only Son, that whoever believes in him should not perish, but have eternal life.',
+        text: 'For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.',
         translation: 'WEB'
       };
     }
+  }
+
+  // Helper method to get day of year (0-364)
+  private getDayOfYear(date: Date): number {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date.getTime() - start.getTime();
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
+  }
+
+  // Helper method to capitalize first letter
+  private capitalizeFirst(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
   // Convert our book ID to bible-api.com format
