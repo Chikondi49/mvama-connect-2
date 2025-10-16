@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ChevronDown, ChevronUp, Clock, Download, Headphones, Pause, Play, Search, SkipBack, SkipForward, Users, Video, X } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ChevronUp, Clock, Download, Headphones, MoreHorizontal, Pause, Play, Search, SkipBack, SkipForward, Video, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, ImageBackground, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -195,6 +195,7 @@ export default function SermonsScreen() {
   const [showGlobalPlayer, setShowGlobalPlayer] = useState(false);
   const [currentPlayingSeries, setCurrentPlayingSeries] = useState<string | null>(null);
   const [showSearchInterface, setShowSearchInterface] = useState(false);
+  const [showNowPlaying, setShowNowPlaying] = useState(false);
 
   // Helper function to format sermon dates safely
   const formatSermonDate = (dateString: string): string => {
@@ -1175,16 +1176,22 @@ export default function SermonsScreen() {
       {/* Global Player */}
       <GlobalPlayer />
       
-      {/* Modern Header Section */}
+      {/* Modern Header with Greeting */}
       <View style={styles.modernHeader}>
         <View style={styles.headerTop}>
-          <Text style={styles.modernHeaderTitle}>Sermons</Text>
-          <View style={styles.channelBadge}>
-            <Users size={14} color="#c9a961" strokeWidth={2} />
-            <Text style={styles.channelBadgeText}>Rev. Yassin Gammah</Text>
+          <View style={styles.greetingSection}>
+            <Text style={styles.greetingText}>Hey there! 👋</Text>
+            <Text style={styles.greetingSubtext}>Listen to your favorite sermons</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerActionButton}>
+              <Search size={20} color="#ffffff" strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerActionButton}>
+              <MoreHorizontal size={20} color="#ffffff" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
         </View>
-        </View>
-        <Text style={styles.modernHeaderSubtitle}>Messages from MVAMA CCAP Nkhoma Synod</Text>
       </View>
 
       {/* Tab Navigation */}
@@ -1271,13 +1278,13 @@ export default function SermonsScreen() {
           {activeTab === 'audio' ? (
             // Audio Sermons Section
             <>
-              {console.log('🎵 Rendering audio tab, podcastSeries:', podcastSeries.length, 'loadingAudio:', loadingAudio, 'filteredPodcastSeries:', filteredPodcastSeries.length)}
               {selectedSeries ? (
                 // Episode List View
                 <>
                   <View style={styles.seriesHeader}>
                     <TouchableOpacity style={styles.backButton} onPress={goBackToSeries}>
-                      <Text style={styles.backButtonText}>← Back to Series</Text>
+                      <ArrowLeft size={20} color="#c9a961" strokeWidth={2} />
+                      <Text style={styles.backButtonText}>Back to Series</Text>
                     </TouchableOpacity>
                     <View style={styles.seriesInfo}>
                       <ImageBackground
@@ -1301,18 +1308,7 @@ export default function SermonsScreen() {
                   <View style={styles.episodesList}>
                     {filteredEpisodes.map((episode) => (
                       <View key={episode.id} style={styles.episodeListItem}>
-                        {/* Vertical Episode Banner */}
-                        <View style={styles.episodeListBanner}>
-                          <Text style={styles.episodeListBannerText}>EPISODE</Text>
-                          </View>
-                        
                         <View style={styles.episodeListContent}>
-                          {/* Episode Number */}
-                          <View style={styles.episodeListNumber}>
-                            <Text style={styles.episodeListNumberText}>{episode.episodeNumber}</Text>
-                              </View>
-                          
-                          {/* Episode Info */}
                           <View style={styles.episodeListInfo}>
                             <Text style={styles.episodeListTitle} numberOfLines={2}>
                               {episode.title}
@@ -1321,7 +1317,6 @@ export default function SermonsScreen() {
                               {episode.speaker}
                             </Text>
                             
-                            {/* Episode Meta */}
                             <View style={styles.episodeListMeta}>
                               <View style={styles.episodeListMetaItem}>
                                 <Clock size={12} color="#c9a961" strokeWidth={2} />
@@ -1335,123 +1330,131 @@ export default function SermonsScreen() {
                           </View>
                         </View>
                         
-                        {/* Action Buttons - Moved to end */}
                         <View style={styles.episodeListActions}>
-                              <TouchableOpacity 
+                          <TouchableOpacity 
                             style={styles.episodeListDownloadButton}
-                                onPress={() => downloadAudio(episode)}>
-                                <Download size={16} color="#c9a961" strokeWidth={2} />
-                              </TouchableOpacity>
+                            onPress={() => downloadAudio(episode)}>
+                            <Download size={16} color="#c9a961" strokeWidth={2} />
+                          </TouchableOpacity>
                           
-                            <TouchableOpacity 
-                              style={[
+                          <TouchableOpacity 
+                            style={[
                               styles.episodeListPlayButton,
                               playingAudio === episode.id && isPlaying && styles.episodeListPlayButtonActive
-                              ]}
+                            ]}
                             onPress={() => playAudio(episode)}>
-                              {playingAudio === episode.id && isPlaying ? (
+                            {playingAudio === episode.id && isPlaying ? (
                               <Pause size={20} color="#ffffff" fill="#ffffff" />
-                              ) : (
+                            ) : (
                               <Play size={20} color="#ffffff" fill="#ffffff" />
-                              )}
-                            </TouchableOpacity>
+                            )}
+                          </TouchableOpacity>
                         </View>
-                        
-                        {/* Simple Audio Progress - Only show when wave player is minimized */}
-                        {playingAudio === episode.id && currentEpisode && isPlayerMinimized && (
-                          <View style={styles.simpleEpisodePlayer}>
-                            <View style={styles.simpleProgressBar}>
-                              <View 
-                                style={[
-                                  styles.simpleProgressFill, 
-                                  { width: `${(currentTime / duration) * 100}%` }
-                                ]} 
-                              />
-                            </View>
-                            <Text style={styles.simpleProgressText}>
-                              {formatTime(currentTime)} / {formatTime(duration)}
-                            </Text>
-                          </View>
-                        )}
                       </View>
                     ))}
                   </View>
                 </>
               ) : (
-                // Series List View
+                // New Modern Home Layout
                 <>
-                  <View style={styles.sectionHeader}>
-                    <View style={styles.sectionHeaderTop}>
-                      <View style={styles.sectionHeaderLeft}>
-                    <Text style={styles.sectionTitle}>
-                      {selectedCategory === 'All' ? 'Podcast Series' : selectedCategory}
-                    </Text>
-                    <Text style={styles.sectionSubtitle}>
-                      {filteredPodcastSeries.length} {filteredPodcastSeries.length === 1 ? 'series' : 'series'} found
-                    </Text>
-                      </View>
-                      <TouchableOpacity 
-                        style={styles.sectionSearchButton}
-                        onPress={() => setShowSearchInterface(!showSearchInterface)}
-                        activeOpacity={0.7}>
-                        <Search size={18} color="#c9a961" strokeWidth={2} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  
-                  {(forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).length === 0 ? (
-            <View style={styles.emptyContainer}>
-                      <Text style={styles.emptyText}>No podcast series found</Text>
-              <Text style={styles.emptySubtext}>
-                {searchQuery ? 'Try adjusting your search terms' : 'Check back later for new content'}
-              </Text>
-            </View>
-          ) : (
-                    <View style={styles.seriesGrid}>
-                      {(forcedFilteredPodcastSeries.length === 0 ? filteredPodcastSeries : forcedFilteredPodcastSeries).map((series, index) => (
-                      <TouchableOpacity 
-                        key={series.id} 
-                          style={styles.seriesTile}
+                  {/* Trending Sermons Section */}
+                  <View style={styles.trendingSection}>
+                    <Text style={styles.sectionTitle}>Trending Sermons</Text>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.trendingScrollContent}>
+                      {podcastSeries.map((series, index) => (
+                        <TouchableOpacity 
+                          key={series.id} 
+                          style={styles.trendingCard}
                           onPress={() => openSeries(series)}
                           activeOpacity={0.8}>
-                          
-                          {/* Series Thumbnail */}
-                          <View style={styles.seriesTileThumbnail}>
-                        <ImageBackground
-                          source={{ uri: series.coverImage }}
-                              style={styles.seriesTileImage}
-                              imageStyle={styles.seriesTileImageStyle}>
-                        </ImageBackground>
-                            
+                          <ImageBackground
+                            source={{ uri: series.coverImage }}
+                            style={styles.trendingCardImage}
+                            imageStyle={styles.trendingCardImageStyle}>
+                            <LinearGradient
+                              colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
+                              style={styles.trendingCardGradient}>
+                              <Text style={styles.trendingCardTitle}>{series.title}</Text>
+                              <Text style={styles.trendingCardSpeaker}>{series.speaker}</Text>
+                            </LinearGradient>
                             {/* NEW Banner for recent episodes */}
                             {hasRecentEpisodes(series) && (
-                              <View style={styles.newBanner}>
-                                <Text style={styles.newBannerText}>NEW</Text>
+                              <View style={styles.trendingNewBanner}>
+                                <Text style={styles.trendingNewBannerText}>NEW</Text>
                               </View>
                             )}
+                          </ImageBackground>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  {/* Recently Played Section */}
+                  <View style={styles.recentlyPlayedSection}>
+                    <Text style={styles.sectionTitle}>Recently Played</Text>
+                    <View style={styles.recentlyPlayedList}>
+                      {podcastSeries.slice(0, 2).map((series) => (
+                        <TouchableOpacity 
+                          key={series.id} 
+                          style={styles.recentlyPlayedItem}
+                          onPress={() => openSeries(series)}
+                          activeOpacity={0.8}>
+                          <View style={styles.recentlyPlayedThumbnail}>
+                            <ImageBackground
+                              source={{ uri: series.coverImage }}
+                              style={styles.recentlyPlayedImage}
+                              imageStyle={styles.recentlyPlayedImageStyle}>
+                            </ImageBackground>
                           </View>
-                          
-                          {/* Series Content */}
-                          <View style={styles.seriesTileContent}>
-                            <Text style={styles.seriesTileCategory}>{series.category}</Text>
-                            <Text style={styles.seriesTileTitle} numberOfLines={2}>
+                          <View style={styles.recentlyPlayedInfo}>
+                            <Text style={styles.recentlyPlayedTitle} numberOfLines={1}>
                               {series.title}
-                          </Text>
-                            <Text style={styles.seriesTileSpeaker} numberOfLines={1}>
-                              {series.speaker}
                             </Text>
-                            
-                            {/* Series Meta */}
-                            <View style={styles.seriesTileMeta}>
-                              <Text style={styles.seriesTileEpisodeCount}>
-                                {series.totalEpisodes} episodes
-                              </Text>
+                            <View style={styles.recentlyPlayedMeta}>
+                              <Clock size={12} color="#c9a961" strokeWidth={2} />
+                              <Text style={styles.recentlyPlayedDuration}>25 mins remaining</Text>
+                            </View>
                           </View>
-                        </View>
-                      </TouchableOpacity>
+                          <TouchableOpacity style={styles.recentlyPlayedPlayButton}>
+                            <Play size={16} color="#ffffff" fill="#ffffff" />
+                          </TouchableOpacity>
+                        </TouchableOpacity>
                       ))}
                     </View>
-                  )}
+                  </View>
+
+                  {/* Recommended Speakers Section */}
+                  <View style={styles.recommendedSection}>
+                    <View style={styles.recommendedHeader}>
+                      <Text style={styles.sectionTitle}>Recommended Speakers</Text>
+                      <TouchableOpacity>
+                        <Text style={styles.seeAllText}>See all</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.recommendedScrollContent}>
+                      {podcastSeries.slice(0, 4).map((series) => (
+                        <TouchableOpacity 
+                          key={series.id} 
+                          style={styles.recommendedCard}
+                          onPress={() => openSeries(series)}
+                          activeOpacity={0.8}>
+                          <View style={styles.recommendedCardImage}>
+                            <ImageBackground
+                              source={{ uri: series.coverImage }}
+                              style={styles.recommendedImage}
+                              imageStyle={styles.recommendedImageStyle}>
+                            </ImageBackground>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
                 </>
               )}
             </>
@@ -1461,12 +1464,12 @@ export default function SermonsScreen() {
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderTop}>
                   <View style={styles.sectionHeaderLeft}>
-                <Text style={styles.sectionTitle}>
-                  {selectedCategory === 'All' ? 'Video Sermons' : selectedCategory}
-                </Text>
-                <Text style={styles.sectionSubtitle}>
-                  {filteredVideoSermons.length} {filteredVideoSermons.length === 1 ? 'sermon' : 'sermons'} found
-                </Text>
+                    <Text style={styles.sectionTitle}>
+                      {selectedCategory === 'All' ? 'Video Sermons' : selectedCategory}
+                    </Text>
+                    <Text style={styles.sectionSubtitle}>
+                      {filteredVideoSermons.length} {filteredVideoSermons.length === 1 ? 'sermon' : 'sermons'} found
+                    </Text>
                   </View>
                   <TouchableOpacity 
                     style={styles.sectionSearchButton}
@@ -1478,22 +1481,21 @@ export default function SermonsScreen() {
               </View>
               
               {filteredVideoSermons.length === 0 ? (
-            <View style={styles.emptyContainer}>
+                <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
                     {sermons.length === 0 ? 'No video is available at the moment' : 'No video sermons found'}
                   </Text>
-              <Text style={styles.emptySubtext}>
+                  <Text style={styles.emptySubtext}>
                     {sermons.length === 0 
                       ? 'Check back later for new content' 
                       : searchQuery 
                         ? 'Try adjusting your search terms' 
                         : 'Check back later for new content'
                     }
-              </Text>
-            </View>
-          ) : (
+                  </Text>
+                </View>
+              ) : (
                 <View style={styles.videoSermonsContainer}>
-                  {/* Group sermons by category */}
                   {getVideoSermonsByCategory().map((categoryGroup) => (
                     <View key={categoryGroup.category} style={styles.videoCategorySection}>
                       <View style={styles.videoCategoryHeader}>
@@ -1505,19 +1507,18 @@ export default function SermonsScreen() {
                       
                       <View style={styles.videoSermonsGrid}>
                         {categoryGroup.sermons.map((sermon) => (
-              <TouchableOpacity 
-                key={sermon.id} 
+                          <TouchableOpacity 
+                            key={sermon.id} 
                             style={styles.videoSermonCard}
                             onPress={() => handleSermonPress(sermon)}
                             activeOpacity={0.8}>
                             
-                            {/* Video Thumbnail */}
                             <View style={styles.videoThumbnailContainer}>
-                <ImageBackground
-                  source={{ uri: sermon.thumbnail }}
+                              <ImageBackground
+                                source={{ uri: sermon.thumbnail }}
                                 style={styles.videoThumbnail}
                                 imageStyle={styles.videoThumbnailStyle}>
-                  <LinearGradient
+                                <LinearGradient
                                   colors={['rgba(15,15,15,0)', 'rgba(15,15,15,0.7)']}
                                   style={styles.videoGradient}>
                                   <View style={styles.videoPlayButton}>
@@ -1525,12 +1526,11 @@ export default function SermonsScreen() {
                                   </View>
                                   <View style={styles.videoDuration}>
                                     <Text style={styles.videoDurationText}>{sermon.duration}</Text>
-                    </View>
-                  </LinearGradient>
-                </ImageBackground>
-                    </View>
+                                  </View>
+                                </LinearGradient>
+                              </ImageBackground>
+                            </View>
                             
-                            {/* Video Info */}
                             <View style={styles.videoInfo}>
                               <Text style={styles.videoTitle} numberOfLines={2}>
                                 {sermon.title}
@@ -1539,13 +1539,12 @@ export default function SermonsScreen() {
                                 {sermon.channelTitle}
                               </Text>
                               
-                              {/* Video Meta */}
                               <View style={styles.videoMeta}>
                                 <View style={styles.videoMetaItem}>
                                   <Clock size={12} color="#c9a961" strokeWidth={2} />
                                   <Text style={styles.videoMetaText}>
-                      {formatSermonDate(sermon.publishedAt)}
-                    </Text>
+                                    {formatSermonDate(sermon.publishedAt)}
+                                  </Text>
                                 </View>
                                 <Text style={styles.videoMetaDivider}>•</Text>
                                 <Text style={styles.videoMetaText}>
@@ -1554,15 +1553,14 @@ export default function SermonsScreen() {
                               </View>
                             </View>
                             
-                            {/* Action Buttons */}
                             <View style={styles.videoActions}>
-                    <TouchableOpacity 
+                              <TouchableOpacity 
                                 style={styles.videoDownloadButton}
-                      onPress={() => handleVideoDownload(sermon)}>
-                      <Download size={16} color="#c9a961" strokeWidth={2} />
-                    </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
+                                onPress={() => handleVideoDownload(sermon)}>
+                                <Download size={16} color="#c9a961" strokeWidth={2} />
+                              </TouchableOpacity>
+                            </View>
+                          </TouchableOpacity>
                         ))}
                       </View>
                     </View>
@@ -1586,39 +1584,39 @@ const styles = StyleSheet.create({
   modernHeader: {
     paddingTop: 45,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 20,
+    backgroundColor: '#1a1a1a',
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
   },
-  modernHeaderTitle: {
-    fontFamily: 'Playfair-Bold',
-    fontSize: 26,
+  greetingSection: {
+    flex: 1,
+  },
+  greetingText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 24,
     color: '#ffffff',
+    marginBottom: 4,
   },
-  channelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(201, 169, 97, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 169, 97, 0.3)',
-    gap: 4,
-  },
-  channelBadgeText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 11,
-    color: '#c9a961',
-  },
-  modernHeaderSubtitle: {
+  greetingSubtext: {
     fontFamily: 'Inter-Regular',
-    fontSize: 12,
+    fontSize: 14,
     color: '#999999',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -1726,9 +1724,159 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
   },
   sermonsContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 100, // Extra space for global player
+  },
+  
+  // New Modern Section Styles
+  trendingSection: {
+    marginBottom: 32,
+  },
+  trendingScrollContent: {
+    paddingHorizontal: 4,
+    gap: 16,
+  },
+  trendingCard: {
+    width: 200,
+    height: 267, // 3:4 aspect ratio (200 * 4/3 = 267)
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginRight: 16,
+  },
+  trendingCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  trendingCardImageStyle: {
+    resizeMode: 'cover',
+  },
+  trendingCardGradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 16,
+  },
+  trendingCardTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  trendingCardSpeaker: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#c9a961',
+  },
+  trendingNewBanner: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#dc2626',
+  },
+  trendingNewBannerText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 10,
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  
+  recentlyPlayedSection: {
+    marginBottom: 32,
+  },
+  recentlyPlayedList: {
+    gap: 12,
+  },
+  recentlyPlayedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  recentlyPlayedThumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  recentlyPlayedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  recentlyPlayedImageStyle: {
+    resizeMode: 'cover',
+  },
+  recentlyPlayedInfo: {
+    flex: 1,
+  },
+  recentlyPlayedTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: '#ffffff',
+    marginBottom: 6,
+  },
+  recentlyPlayedMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  recentlyPlayedDuration: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: '#999999',
+  },
+  recentlyPlayedPlayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#c9a961',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  recommendedSection: {
+    marginBottom: 32,
+  },
+  recommendedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  seeAllText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#c9a961',
+  },
+  recommendedScrollContent: {
+    paddingHorizontal: 4,
+    gap: 16,
+  },
+  recommendedCard: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
+    marginRight: 16,
+  },
+  recommendedCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  recommendedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  recommendedImageStyle: {
+    resizeMode: 'cover',
   },
   sectionHeader: {
     marginBottom: 12,
@@ -1865,11 +2013,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   backButton: {
-    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
   },
   backButtonText: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: 16,
     color: '#c9a961',
   },
   seriesInfo: {

@@ -505,9 +505,9 @@ export default function ContentManagement() {
                       )}
                       <View style={styles.durationBadge}>
                         <Text style={styles.durationText}>{sermon.duration}</Text>
-                      </View>
-                    </View>
-                    
+                  </View>
+                </View>
+                
                     <View style={styles.modernContentInfo}>
                       <Text style={styles.modernTitle} numberOfLines={2}>{sermon.title}</Text>
                       <Text style={styles.modernSpeaker}>{sermon.speaker}</Text>
@@ -532,30 +532,30 @@ export default function ContentManagement() {
                   </View>
                   
                   <View style={styles.modernActions}>
-                    <TouchableOpacity
+                  <TouchableOpacity
                       style={[styles.modernActionButton, styles.viewAction]}
-                      onPress={() => handleViewContent(sermon, 'sermon')}
-                    >
+                    onPress={() => handleViewContent(sermon, 'sermon')}
+                  >
                       <Eye size={18} color="#4CAF50" />
                       <Text style={[styles.modernActionText, styles.viewActionText]}>View</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
                       style={[styles.modernActionButton, styles.editAction]}
-                      onPress={() => handleEditContent(sermon, 'sermon')}
-                    >
+                    onPress={() => handleEditContent(sermon, 'sermon')}
+                  >
                       <Edit size={18} color="#c9a961" />
                       <Text style={[styles.modernActionText, styles.editActionText]}>Edit</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
                       style={[styles.modernActionButton, styles.deleteAction]}
-                      onPress={() => handleDeleteContent(sermon.id, sermon.title, 'sermon')}
-                    >
+                    onPress={() => handleDeleteContent(sermon.id, sermon.title, 'sermon')}
+                  >
                       <Trash2 size={18} color="#ff6b6b" />
                       <Text style={[styles.modernActionText, styles.deleteActionText]}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
+                </View>
                 </LinearGradient>
               </View>
             ))
@@ -577,9 +577,9 @@ export default function ContentManagement() {
                       )}
                       <View style={styles.episodeBadge}>
                         <Text style={styles.episodeText}>{series.totalEpisodes} episodes</Text>
-                      </View>
-                    </View>
-                    
+                  </View>
+                </View>
+                
                     <View style={styles.modernContentInfo}>
                       <Text style={styles.modernTitle} numberOfLines={2}>{series.title}</Text>
                       <Text style={styles.modernSpeaker}>{series.speaker}</Text>
@@ -595,30 +595,30 @@ export default function ContentManagement() {
                   </View>
                   
                   <View style={styles.modernActions}>
-                    <TouchableOpacity
+                  <TouchableOpacity
                       style={[styles.modernActionButton, styles.viewAction]}
-                      onPress={() => handleViewContent(series, 'series')}
-                    >
+                    onPress={() => handleViewContent(series, 'series')}
+                  >
                       <Eye size={18} color="#4CAF50" />
                       <Text style={[styles.modernActionText, styles.viewActionText]}>View</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
                       style={[styles.modernActionButton, styles.editAction]}
-                      onPress={() => handleEditContent(series, 'series')}
-                    >
+                    onPress={() => handleEditContent(series, 'series')}
+                  >
                       <Edit size={18} color="#c9a961" />
                       <Text style={[styles.modernActionText, styles.editActionText]}>Edit</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
                       style={[styles.modernActionButton, styles.deleteAction]}
-                      onPress={() => handleDeleteContent(series.id, series.title, 'series')}
-                    >
+                    onPress={() => handleDeleteContent(series.id, series.title, 'series')}
+                  >
                       <Trash2 size={18} color="#ff6b6b" />
                       <Text style={[styles.modernActionText, styles.deleteActionText]}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
+                  </TouchableOpacity>
+                </View>
                 </LinearGradient>
               </View>
             ))
@@ -964,7 +964,7 @@ export default function ContentManagement() {
                   <Text style={styles.createButtonText}>Updating...</Text>
                 </View>
               ) : (
-                <Text style={styles.createButtonText}>Update {addType === 'sermon' ? 'Sermon' : 'Series'}</Text>
+              <Text style={styles.createButtonText}>Update {addType === 'sermon' ? 'Sermon' : 'Series'}</Text>
               )}
             </TouchableOpacity>
           </ScrollView>

@@ -9,10 +9,39 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user, userProfile, signOut, isAdmin, isSuperAdmin } = useAuth();
 
-  // Direct logout function that bypasses auth service
-  const directLogout = () => {
-    console.log('🔐 DIRECT LOGOUT - Bypassing auth service');
-    router.replace('/auth/login');
+  // Enhanced logout function with better error handling
+  const handleLogout = async () => {
+    try {
+      console.log('🔐 Starting logout process...');
+      
+      // Clear any stored credentials
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await AsyncStorage.removeItem('remembered_email');
+        await AsyncStorage.removeItem('remember_me');
+        console.log('✅ Cleared stored credentials');
+      } catch (storageError) {
+        console.error('❌ Error clearing storage:', storageError);
+      }
+      
+      // Attempt Firebase logout
+      try {
+        await signOut();
+        console.log('✅ Firebase logout successful');
+      } catch (firebaseError) {
+        console.error('❌ Firebase logout failed:', firebaseError);
+        // Continue with logout even if Firebase fails
+      }
+      
+      // Force navigation to login
+      console.log('🔄 Redirecting to login...');
+      router.replace('/auth/login');
+      
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      // Fallback: force navigation to login
+      router.replace('/auth/login');
+    }
   };
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(true);
@@ -56,6 +85,7 @@ export default function SettingsScreen() {
         <Text style={styles.headerTitle}>Settings</Text>
         <Text style={styles.headerSubtitle}>Manage your preferences</Text>
       </View>
+      
 
       <ScrollView
         style={styles.content}
@@ -240,16 +270,7 @@ export default function SettingsScreen() {
                   {
                     text: 'Sign Out',
                     style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        await signOut();
-                        router.replace('/auth/login');
-                      } catch (error) {
-                        console.error('Sign out error:', error);
-                        // Fallback to direct logout
-                        directLogout();
-                      }
-                    },
+                    onPress: handleLogout,
                   },
                 ]
               );

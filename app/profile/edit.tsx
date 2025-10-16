@@ -1,8 +1,11 @@
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Mail, Phone, User } from 'lucide-react-native';
+import { ArrowLeft, Camera, Mail, Phone, User, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -14,6 +17,7 @@ import {
 } from 'react-native';
 import Notification from '../../components/Notification';
 import { useAuth } from '../../contexts/AuthContext';
+import { storageService } from '../../services/storageService';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -23,7 +27,9 @@ export default function EditProfileScreen() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [displayNameError, setDisplayNameError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -43,6 +49,7 @@ export default function EditProfileScreen() {
       setEmail(userProfile.email || user?.email || '');
       setPhone(userProfile.phone || '');
       setBio(userProfile.bio || '');
+      setProfileImage(userProfile.photoURL || null);
     }
   }, [userProfile, user]);
 
@@ -73,6 +80,67 @@ export default function EditProfileScreen() {
     return isValid;
   };
 
+  const handleImagePicker = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        setNotification({
+          visible: true,
+          message: 'Permission to access media library is required!',
+          type: 'error',
+        });
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        console.log('Image picker cancelled');
+        return;
+      }
+
+      const imageUri = result.assets[0].uri;
+      console.log('📷 Selected image:', imageUri);
+
+      // Process and crop the image
+      const manipulatedImage = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [
+          {
+            resize: {
+              width: 400,
+              height: 400,
+            },
+          },
+        ],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+        }
+      );
+
+      console.log('✅ Image processed successfully:', manipulatedImage.uri);
+      setProfileImage(manipulatedImage.uri);
+    } catch (error: any) {
+      console.error('❌ Image picker failed:', error);
+      setNotification({
+        visible: true,
+        message: 'Failed to select image. Please try again.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setProfileImage(null);
+  };
+
   const handleSave = async () => {
     if (!validateForm()) {
       return;
@@ -87,7 +155,35 @@ export default function EditProfileScreen() {
         email: email.trim(),
         phone: phone.trim(),
         bio: bio.trim(),
+        profileImage: profileImage,
       });
+
+      let photoURL = userProfile?.photoURL;
+
+      // Upload new profile image if one is selected
+      if (profileImage && profileImage !== userProfile?.photoURL) {
+        setIsUploadingImage(true);
+        console.log('📤 Uploading profile image...');
+        
+        const uploadResult = await storageService.uploadProfileImage(
+          user?.uid || 'unknown',
+          profileImage
+        );
+
+        if (uploadResult.success && uploadResult.url) {
+          photoURL = uploadResult.url;
+          console.log('✅ Profile image uploaded successfully:', photoURL);
+        } else {
+          console.error('❌ Profile image upload failed:', uploadResult.error);
+          setNotification({
+            visible: true,
+            message: `Failed to upload profile image: ${uploadResult.error}`,
+            type: 'error',
+          });
+          return;
+        }
+        setIsUploadingImage(false);
+      }
       
       // Update profile in Firestore
       await updateProfile({
@@ -95,6 +191,7 @@ export default function EditProfileScreen() {
         email: email.trim(),
         phone: phone.trim(),
         bio: bio.trim(),
+        photoURL: photoURL,
       });
 
       console.log('✅ Profile update successful');
@@ -121,6 +218,7 @@ export default function EditProfileScreen() {
       });
     } finally {
       setIsLoading(false);
+      setIsUploadingImage(false);
     }
   };
 
@@ -164,6 +262,40 @@ export default function EditProfileScreen() {
                  <Text style={styles.title}>Edit Profile</Text>
                  <Text style={styles.subtitle}>Update your personal information</Text>
                </View>
+
+              {/* Profile Picture Section */}
+              <View style={styles.profilePictureSection}>
+                <Text style={styles.profilePictureLabel}>Profile Picture</Text>
+                <View style={styles.profilePictureContainer}>
+                  {profileImage ? (
+                    <View style={styles.profileImageWrapper}>
+                      <Image source={{ uri: profileImage }} style={styles.profileImage} />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={handleRemoveImage}>
+                        <X size={16} color="#ffffff" strokeWidth={2} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.profileImagePlaceholder}>
+                      <User size={40} color="#c9a961" strokeWidth={2} />
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    style={styles.addImageButton}
+                    onPress={handleImagePicker}
+                    disabled={isUploadingImage}>
+                    {isUploadingImage ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Camera size={20} color="#ffffff" strokeWidth={2} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.profilePictureHint}>
+                  Tap the camera icon to add or change your profile picture
+                </Text>
+              </View>
 
               {/* Profile Form */}
               <View style={styles.form}>
@@ -257,13 +389,15 @@ export default function EditProfileScreen() {
 
                 {/* Save Button */}
                 <TouchableOpacity
-                  style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+                  style={[styles.saveButton, (isLoading || isUploadingImage) && styles.saveButtonDisabled]}
                   onPress={handleSave}
-                  disabled={isLoading}>
-                  {isLoading ? (
+                  disabled={isLoading || isUploadingImage}>
+                  {isLoading || isUploadingImage ? (
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                    <Text style={styles.saveButtonText}>
+                      {isUploadingImage ? 'Uploading Image...' : 'Save Changes'}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -372,5 +506,74 @@ const styles = StyleSheet.create({
     color: '#ff6b6b',
     marginTop: 4,
     marginLeft: 4,
+  },
+  profilePictureSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  profilePictureLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: '#ffffff',
+    marginBottom: 16,
+  },
+  profilePictureContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileImageWrapper: {
+    position: 'relative',
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#c9a961',
+  },
+  profileImagePlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 3,
+    borderColor: '#c9a961',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ff6b6b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  addImageButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#c9a961',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#ffffff',
+  },
+  profilePictureHint: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: '#888888',
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 20,
   },
 });

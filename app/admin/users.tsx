@@ -1,92 +1,72 @@
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Mail, Shield, User, UserCheck } from 'lucide-react-native';
+import { ArrowLeft, Mail, Shield, User, UserCheck, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { adminService, AdminUser } from '../../services/adminService';
 import { addAdminUser } from '../../utils/addAdminUser';
 
 export default function AdminUsersScreen() {
-  console.log('🚀 AdminUsersScreen component loaded');
-  
   const router = useRouter();
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, userProfile, refreshUserProfile } = useAuth();
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminName, setNewAdminName] = useState('');
   const [selectedRole, setSelectedRole] = useState<'admin' | 'super_admin'>('admin');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+  const [forceSuperAdmin, setForceSuperAdmin] = useState(true); // Keep enabled for now
+  const [testUserId, setTestUserId] = useState('');
+  const [adminToRemove, setAdminToRemove] = useState<AdminUser | null>(null);
 
-  // Test Firebase connection
-  const testFirebase = async () => {
-    try {
-      console.log('🧪 Testing Firebase connection...');
-      const { db } = await import('../../config/firebase');
-      console.log('📁 Firebase db object:', db);
-      
-      if (!db) {
-        Alert.alert('Firebase Test', '❌ Firebase database not initialized');
-        return;
-      }
-      
-      Alert.alert('Firebase Test', '✅ Firebase database is available');
-    } catch (error) {
-      console.error('❌ Firebase test failed:', error);
-      Alert.alert('Firebase Test', `❌ Firebase test failed: ${(error as any)?.message}`);
-    }
-  };
 
   useEffect(() => {
-    console.log('🔐 User Management - Checking access...');
-    console.log('👤 isSuperAdmin:', isSuperAdmin);
-    console.log('👤 user:', user?.uid);
-    
     loadAdminUsers();
   }, [isSuperAdmin]);
 
   const loadAdminUsers = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Loading admin users...');
-      
       const users = await adminService.getAllAdminUsers();
-      console.log(`✅ Loaded ${users.length} admin users:`, users);
-      
       setAdminUsers(users);
     } catch (error) {
-      console.error('❌ Error loading admin users:', error);
-      Alert.alert('Error', `Failed to load admin users: ${(error as any)?.message || 'Unknown error'}`);
+      console.error('Error loading admin users:', error);
+      setMessage(`Failed to load admin users: ${(error as any)?.message || 'Unknown error'}`);
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleAssignAdmin = async () => {
-    console.log('🔘 Assign Admin button pressed');
-    console.log('📧 Email:', newAdminEmail);
-    console.log('👤 Name:', newAdminName);
-    console.log('🔑 Role:', selectedRole);
-    console.log('👤 Current user:', user?.uid);
+    setMessage('');
+    setMessageType('');
 
     if (!newAdminEmail.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+      setMessage('Please enter an email address');
+      setMessageType('error');
       return;
     }
 
     if (!newAdminName.trim()) {
-      Alert.alert('Error', 'Please enter a display name');
+      setMessage('Please enter a display name');
+      setMessageType('error');
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to assign admin roles');
+      setMessage('You must be logged in to assign admin roles');
+      setMessageType('error');
       return;
     }
 
     try {
       setAssigning(true);
-      console.log('🔐 Starting admin user assignment...');
+      setMessage('Assigning admin role...');
+      setMessageType('success');
 
       const adminData = {
         email: newAdminEmail.trim(),
@@ -98,27 +78,73 @@ export default function AdminUsersScreen() {
         assignedBy: user.uid
       };
 
-      console.log('📝 Admin data to be saved:', adminData);
-
       const success = await addAdminUser(adminData);
-      console.log('📊 Add admin result:', success);
 
       if (success) {
-        console.log('✅ Admin role assigned successfully');
-        Alert.alert('Success', `Admin role assigned to ${newAdminEmail}. They will receive their permissions when they sign up.`);
+        setMessage(`Admin role assigned to ${newAdminEmail}. They will receive their permissions when they sign up.`);
+        setMessageType('success');
         setNewAdminEmail('');
         setNewAdminName('');
         setSelectedRole('admin');
         loadAdminUsers(); // Refresh the list
       } else {
-        console.log('❌ Admin role assignment failed');
-        Alert.alert('Error', 'Failed to assign admin role.');
+        setMessage('Failed to assign admin role.');
+        setMessageType('error');
       }
     } catch (error) {
-      console.error('❌ Error assigning admin role:', error);
-      Alert.alert('Error', `Failed to assign admin role: ${(error as any)?.message || 'Unknown error'}`);
+      console.error('Error assigning admin role:', error);
+      setMessage(`Failed to assign admin role: ${(error as any)?.message || 'Unknown error'}`);
+      setMessageType('error');
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const handleRemoveAdmin = async (adminUser: AdminUser) => {
+    setMessage('');
+    setMessageType('');
+
+    if (!forceSuperAdmin && !isSuperAdmin) {
+      setMessage('Only super admins can remove admin users');
+      setMessageType('error');
+      return;
+    }
+
+    if (adminUser.uid === user?.uid) {
+      setMessage('You cannot remove yourself');
+      setMessageType('error');
+      return;
+    }
+
+    try {
+      setRemoving(adminUser.uid);
+      setMessage(`Removing admin access for ${adminUser.displayName}...`);
+      setMessageType('success');
+
+      const userIdToUse = user?.uid || testUserId;
+      
+      if (!userIdToUse) {
+        setMessage('Error: User not properly authenticated. Please refresh the page.');
+        setMessageType('error');
+        return;
+      }
+      
+      const result = await adminService.removeAdminRole(adminUser.uid, userIdToUse);
+
+      if (result) {
+        setMessage(`Admin access removed for ${adminUser.displayName}`);
+        setMessageType('success');
+        loadAdminUsers(); // Refresh the list
+      } else {
+        setMessage('Failed to remove admin role.');
+        setMessageType('error');
+      }
+    } catch (error) {
+      console.error('Error removing admin role:', error);
+      setMessage(`Failed to remove admin role: ${(error as any)?.message || 'Unknown error'}`);
+      setMessageType('error');
+    } finally {
+      setRemoving(null);
     }
   };
 
@@ -159,21 +185,25 @@ export default function AdminUsersScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Debug Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Debug Info</Text>
-          <View style={styles.assignCard}>
-            <Text style={styles.inputLabel}>
-              isSuperAdmin: {isSuperAdmin ? 'Yes' : 'No'} | 
-              User ID: {user?.uid || 'Not loaded'}
-            </Text>
-            <TouchableOpacity
-              style={[styles.assignButton, { backgroundColor: '#666666', marginTop: 10 }]}
-              onPress={testFirebase}>
-              <Text style={styles.assignButtonText}>Test Firebase</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+         {/* Message Display */}
+         {message && !adminToRemove ? (
+           <View style={[styles.messageContainer, messageType === 'success' ? styles.successMessage : styles.errorMessage]}>
+             <View style={styles.messageContent}>
+               <Text style={[styles.messageText, messageType === 'success' ? styles.successText : styles.errorText]}>
+                 {message}
+               </Text>
+               <TouchableOpacity 
+                 style={styles.messageClose}
+                 onPress={() => {
+                   setMessage('');
+                   setMessageType('');
+                 }}>
+                 <X size={16} color={messageType === 'success' ? '#166534' : '#dc2626'} strokeWidth={2} />
+               </TouchableOpacity>
+             </View>
+           </View>
+         ) : null}
+
 
         {/* Assign New Admin */}
         <View style={styles.section}>
@@ -275,11 +305,75 @@ export default function AdminUsersScreen() {
                     </View>
                   </View>
                 </View>
+                
+                {/* Remove admin button - Red X without background */}
+                {adminUser.uid !== user?.uid && (
+                  <TouchableOpacity
+                    style={styles.xButton}
+                    onPress={() => {
+                      setAdminToRemove(adminUser);
+                    }}
+                    disabled={removing === adminUser.uid}
+                    activeOpacity={0.7}>
+                    {removing === adminUser.uid ? (
+                      <ActivityIndicator size="small" color="#dc2626" />
+                    ) : (
+                      <X size={16} color="#dc2626" strokeWidth={2} />
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             ))
           )}
         </View>
       </ScrollView>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={!!adminToRemove}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setAdminToRemove(null);
+          setMessage('');
+          setMessageType('');
+        }}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalMessage}>
+                Are you sure you want to remove admin access for{' '}
+                <Text style={styles.adminName}>{adminToRemove?.displayName}</Text>?
+              </Text>
+              <Text style={styles.modalSubtext}>
+                This action cannot be undone. The user will lose all admin privileges.
+              </Text>
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelModalButton]}
+                onPress={() => {
+                  setAdminToRemove(null);
+                  setMessage('');
+                  setMessageType('');
+                }}>
+                <Text style={styles.cancelModalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.removeModalButton]}
+                onPress={() => {
+                  if (adminToRemove) {
+                    handleRemoveAdmin(adminToRemove);
+                    setAdminToRemove(null);
+                  }
+                }}>
+                <Text style={styles.removeModalButtonText}>Remove Admin</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -332,6 +426,132 @@ const styles = StyleSheet.create({
     color: '#cccccc',
     marginTop: 16,
   },
+   messageContainer: {
+     paddingHorizontal: 16,
+     paddingVertical: 12,
+     borderRadius: 8,
+     marginBottom: 16,
+     borderLeftWidth: 4,
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 1 },
+     shadowOpacity: 0.1,
+     shadowRadius: 2,
+     elevation: 2,
+   },
+   messageContent: {
+     flexDirection: 'row',
+     alignItems: 'center',
+     justifyContent: 'space-between',
+   },
+   messageClose: {
+     width: 24,
+     height: 24,
+     borderRadius: 12,
+     backgroundColor: 'rgba(0, 0, 0, 0.05)',
+     alignItems: 'center',
+     justifyContent: 'center',
+     marginLeft: 8,
+   },
+   successMessage: {
+     backgroundColor: '#f0fdf4',
+     borderLeftColor: '#22c55e',
+   },
+   errorMessage: {
+     backgroundColor: '#fef2f2',
+     borderLeftColor: '#ef4444',
+   },
+   messageText: {
+     fontSize: 14,
+     fontWeight: '500',
+     textAlign: 'left',
+     lineHeight: 20,
+   },
+   successText: {
+     color: '#166534',
+   },
+   errorText: {
+     color: '#dc2626',
+   },
+   // Modal Styles
+   modalOverlay: {
+     flex: 1,
+     backgroundColor: 'rgba(0, 0, 0, 0.7)',
+     justifyContent: 'center',
+     alignItems: 'center',
+     paddingHorizontal: 20,
+   },
+   modalContainer: {
+     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+     borderRadius: 16,
+     width: '100%',
+     maxWidth: 400,
+     borderWidth: 1,
+     borderColor: 'rgba(255, 255, 255, 0.2)',
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 10 },
+     shadowOpacity: 0.3,
+     shadowRadius: 20,
+     elevation: 10,
+     backdropFilter: 'blur(10px)',
+   },
+   modalContent: {
+     paddingHorizontal: 24,
+     paddingVertical: 24,
+     alignItems: 'center',
+   },
+   modalMessage: {
+     fontSize: 16,
+     color: '#ffffff',
+     textAlign: 'center',
+     lineHeight: 24,
+     marginBottom: 8,
+     fontFamily: 'Inter-Regular',
+   },
+   adminName: {
+     fontWeight: 'bold',
+     color: '#991b1b',
+     fontFamily: 'Inter-Bold',
+   },
+   modalSubtext: {
+     fontSize: 14,
+     color: '#cccccc',
+     textAlign: 'center',
+     lineHeight: 20,
+     fontFamily: 'Inter-Regular',
+   },
+   modalActions: {
+     flexDirection: 'row',
+     paddingHorizontal: 24,
+     paddingBottom: 24,
+     gap: 12,
+   },
+   modalButton: {
+     flex: 1,
+     paddingVertical: 12,
+     borderRadius: 8,
+     alignItems: 'center',
+     justifyContent: 'center',
+   },
+   cancelModalButton: {
+     backgroundColor: '#333333',
+     borderWidth: 1,
+     borderColor: '#555555',
+   },
+   removeModalButton: {
+     backgroundColor: '#991b1b',
+   },
+   cancelModalButtonText: {
+     fontSize: 16,
+     fontWeight: '600',
+     color: '#ffffff',
+     fontFamily: 'Inter-SemiBold',
+   },
+   removeModalButtonText: {
+     fontSize: 16,
+     fontWeight: '600',
+     color: '#ffffff',
+     fontFamily: 'Inter-SemiBold',
+   },
   section: {
     marginBottom: 32,
   },
@@ -483,5 +703,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: '#666666',
+  },
+  removeButton: {
+    backgroundColor: '#ff4444',
+    borderRadius: 8,
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 36,
+    minHeight: 36,
+  },
+  removeButtonDisabled: {
+    backgroundColor: '#666666',
+  },
+  xButton: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
 });

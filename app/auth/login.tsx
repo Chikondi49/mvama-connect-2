@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     StyleSheet,
@@ -22,6 +23,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [notification, setNotification] = useState<{
     visible: boolean;
     message: string;
@@ -31,6 +33,26 @@ export default function LoginScreen() {
     message: '',
     type: 'success',
   });
+
+  // Load saved credentials on component mount
+  useEffect(() => {
+    loadSavedCredentials();
+  }, []);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const savedEmail = await AsyncStorage.getItem('remembered_email');
+      const savedRememberMe = await AsyncStorage.getItem('remember_me');
+      
+      if (savedEmail && savedRememberMe === 'true') {
+        setEmail(savedEmail);
+        setRememberMe(true);
+        console.log('✅ Loaded saved email:', savedEmail);
+      }
+    } catch (error) {
+      console.error('❌ Error loading saved credentials:', error);
+    }
+  };
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -75,10 +97,30 @@ export default function LoginScreen() {
       await signIn(email.trim(), password);
       console.log('✅ Login successful - user authenticated with Firebase');
       
+      // Save credentials if remember me is checked
+      if (rememberMe) {
+        try {
+          await AsyncStorage.setItem('remembered_email', email.trim());
+          await AsyncStorage.setItem('remember_me', 'true');
+          console.log('✅ Credentials saved for future logins');
+        } catch (saveError) {
+          console.error('❌ Error saving credentials:', saveError);
+        }
+      } else {
+        // Clear saved credentials if remember me is unchecked
+        try {
+          await AsyncStorage.removeItem('remembered_email');
+          await AsyncStorage.removeItem('remember_me');
+          console.log('✅ Cleared saved credentials');
+        } catch (clearError) {
+          console.error('❌ Error clearing credentials:', clearError);
+        }
+      }
+      
       // Show success notification
       setNotification({
         visible: true,
-        message: 'Success!',
+        message: 'Welcome back!',
         type: 'success',
       });
       
@@ -195,6 +237,18 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                   </View>
                   {passwordError && <Text style={styles.errorText}>{passwordError}</Text>}
+                </View>
+
+                {/* Remember Me Checkbox */}
+                <View style={styles.rememberMeContainer}>
+                  <TouchableOpacity
+                    style={styles.rememberMeCheckbox}
+                    onPress={() => setRememberMe(!rememberMe)}>
+                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                      {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <Text style={styles.rememberMeText}>Remember me</Text>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Login Button */}
@@ -344,5 +398,37 @@ const styles = StyleSheet.create({
     color: '#ff6b6b',
     marginTop: 4,
     marginLeft: 4,
+  },
+  rememberMeContainer: {
+    marginBottom: 20,
+  },
+  rememberMeCheckbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#c9a961',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: '#c9a961',
+    borderColor: '#c9a961',
+  },
+  checkmark: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  rememberMeText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: '#cccccc',
   },
 });
